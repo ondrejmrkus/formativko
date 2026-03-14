@@ -6,10 +6,19 @@ import { DateField } from "@/components/shared/DateField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Mic, Camera, Upload, FileText, Plus } from "lucide-react";
-import { getStudentById, getStudentDisplayName } from "@/data/mockData";
+import {
+  getStudentById,
+  getStudentDisplayName,
+  students as allStudents,
+} from "@/data/mockData";
 import { useToast } from "@/hooks/use-toast";
 
 type ProofType = "text" | "voice" | "camera" | "file";
@@ -29,6 +38,11 @@ export default function B04AddProofOfLearning() {
   const [selectedType, setSelectedType] = useState<ProofType>("text");
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [date, setDate] = useState<Date>(new Date());
+  const [attachedStudentIds, setAttachedStudentIds] = useState<string[]>([student.id]);
+  const [studentSearchOpen, setStudentSearchOpen] = useState(false);
+  const [studentSearch, setStudentSearch] = useState("");
 
   const handleSave = () => {
     if (!title.trim()) {
@@ -38,6 +52,27 @@ export default function B04AddProofOfLearning() {
     toast({ title: "Důkaz o učení uložen" });
     navigate(`/student-profiles/${student.id}`);
   };
+
+  const removeStudent = (sid: string) => {
+    if (attachedStudentIds.length <= 1) return;
+    setAttachedStudentIds((prev) => prev.filter((s) => s !== sid));
+  };
+
+  const addStudent = (sid: string) => {
+    if (!attachedStudentIds.includes(sid)) {
+      setAttachedStudentIds((prev) => [...prev, sid]);
+    }
+    setStudentSearchOpen(false);
+    setStudentSearch("");
+  };
+
+  const availableStudents = allStudents
+    .filter((s) => !attachedStudentIds.includes(s.id))
+    .filter(
+      (s) =>
+        !studentSearch ||
+        `${s.firstName} ${s.lastName}`.toLowerCase().includes(studentSearch.toLowerCase())
+    );
 
   return (
     <AppLayout>
@@ -123,17 +158,64 @@ export default function B04AddProofOfLearning() {
             />
           </div>
 
-          <LessonLinkField />
-          <DateField date="2026-03-14" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <LessonLinkField lessonId={selectedLessonId} onLessonChange={setSelectedLessonId} />
+            <DateField date={date} onDateChange={setDate} />
+          </div>
 
           <div>
             <label className="text-sm font-medium text-muted-foreground block mb-2">Žáci</label>
             <div className="flex flex-wrap gap-2">
-              <StudentChip name={getStudentDisplayName(student)} removable />
-              <button className="flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-border text-sm text-muted-foreground hover:bg-accent transition-colors">
-                <Plus className="h-3 w-3" />
-                Připojit žáka
-              </button>
+              {attachedStudentIds.map((sid) => {
+                const s = getStudentById(sid);
+                if (!s) return null;
+                return (
+                  <StudentChip
+                    key={sid}
+                    name={getStudentDisplayName(s)}
+                    removable={attachedStudentIds.length > 1}
+                    onRemove={() => removeStudent(sid)}
+                  />
+                );
+              })}
+              <Popover
+                open={studentSearchOpen}
+                onOpenChange={(o) => {
+                  setStudentSearchOpen(o);
+                  if (!o) setStudentSearch("");
+                }}
+              >
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-border text-sm text-muted-foreground hover:bg-accent transition-colors">
+                    <Plus className="h-3 w-3" />
+                    Připojit žáka
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-2" align="start">
+                  <Input
+                    placeholder="Hledat žáka..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    className="mb-2 h-8 text-sm"
+                    autoFocus
+                  />
+                  <div className="max-h-48 overflow-auto space-y-0.5">
+                    {availableStudents.length === 0 ? (
+                      <p className="text-sm text-muted-foreground px-2 py-1">Žádní žáci</p>
+                    ) : (
+                      availableStudents.slice(0, 20).map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => addStudent(s.id)}
+                          className="w-full text-left px-2 py-1.5 rounded text-sm hover:bg-accent text-foreground transition-colors"
+                        >
+                          {getStudentDisplayName(s)}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 

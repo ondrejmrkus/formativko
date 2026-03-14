@@ -93,6 +93,7 @@ export default function B02StudentProfileDetail() {
         </div>
 
         <ClassFilterBar
+          vertical
           groups={[
             { label: "Typ důkazu", options: ["Text", "Hlas", "Foto", "Soubor"] },
             { label: "Předmět", options: ["Matematika", "Český jazyk"] },

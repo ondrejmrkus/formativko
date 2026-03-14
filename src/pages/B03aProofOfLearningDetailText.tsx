@@ -44,9 +44,9 @@ export default function B03aProofOfLearningDetailText() {
         </div>
 
         <div className="space-y-4">
-          <LessonLinkField lessonTitle={proof.lessonId ? "Zlomky a desetinná čísla" : undefined} />
+          <LessonLinkField lessonId={proof.lessonId || null} />
 
-          <DateField date={proof.date} />
+          <DateField date={new Date(proof.date)} />
 
           <div>
             <label className="text-sm font-medium text-muted-foreground block mb-2">Žáci</label>
