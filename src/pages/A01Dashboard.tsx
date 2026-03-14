@@ -1,6 +1,6 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Link } from "react-router-dom";
-import { Users, School, Camera } from "lucide-react";
+import { Users, School, Camera, FileText } from "lucide-react";
 
 const actions = [
   {
@@ -16,10 +16,16 @@ const actions = [
     href: "/create-class",
   },
   {
-    title: "Přidat důkaz o učení",
+    title: "Sbírat důkazy o učení v hodině",
     description: "Zaznamenejte pozorování, poznámky nebo soubory k žákům.",
     icon: Camera,
     href: "/capture",
+  },
+  {
+    title: "Vytvořit slovní hodnocení",
+    description: "Vygenerujte návrhy hodnocení pro vaše žáky.",
+    icon: FileText,
+    href: "/evaluations/create",
   },
 ];
 
@@ -27,12 +33,12 @@ export default function A01Dashboard() {
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold mb-2">Vítejte v Tiny</h1>
+        <h1 className="text-2xl font-bold mb-1">Dobrý den, Radovane!</h1>
         <p className="text-muted-foreground mb-8">
-          Co byste chtěli udělat jako první?
+          Jak vám mohu dnes pomoci?
         </p>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           {actions.map((action) => (
             <Link
               key={action.title}

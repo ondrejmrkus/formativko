@@ -1,4 +1,4 @@
-import { Home, Users, FileText, BookOpen, Camera } from "lucide-react";
+import { Home, Users, FileText, BookOpen } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
@@ -17,7 +17,6 @@ const navItems = [
   { title: "Žáci", url: "/student-profiles", icon: Users },
   { title: "Hodnocení", url: "/evaluations", icon: FileText },
   { title: "Lekce", url: "/lessons", icon: BookOpen },
-  { title: "Zachytávač", url: "/capture", icon: Camera },
 ];
 
 export function AppSidebar() {
