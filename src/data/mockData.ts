@@ -203,6 +203,14 @@ export const evaluations: Evaluation[] = [
   { id: "e5", studentId: "s43", status: "final", subject: "Dějepis", period: "1. pololetí", text: "Aneta má vynikající znalosti historických událostí. Její ústní projev je srozumitelný a logicky strukturovaný." },
 ];
 
+// ---------- Evaluation Groups ----------
+export const evaluationGroups: EvaluationGroup[] = [
+  { id: "eg1", name: "Pololetní vysvědčení 2026", type: "vysvedceni", studentCount: 24, dateFrom: "2025-09-01", dateTo: "2026-01-31", classId: "c1" },
+  { id: "eg2", name: "Tripartita prosinec 2025", type: "tripartita", studentCount: 18, dateFrom: "2025-09-01", dateTo: "2025-12-15", classId: "c2" },
+  { id: "eg3", name: "Průběžné hodnocení 03/2026", type: "prubezna", studentCount: 12, dateFrom: "2026-02-01", dateTo: "2026-03-14", classId: "c3" },
+  { id: "eg4", name: "Vlastní hodnocení — projekt", type: "vlastni", studentCount: 16, dateFrom: "2026-01-15", dateTo: "2026-03-01", classId: "c5" },
+];
+
 // ---------- Helpers ----------
 export function getStudentsByClass(classId: string): Student[] {
   const cls = classes.find(c => c.id === classId);
