@@ -1,5 +1,7 @@
+import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
+import { SearchBar } from "@/components/shared/SearchBar";
 import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,8 +12,6 @@ import {
   getClassesForStudent,
   getProofsForStudent,
   getStudentDisplayName,
-  getStudentById as getStudent,
-  students,
 } from "@/data/mockData";
 
 export default function B02StudentProfileDetail() {
@@ -19,6 +19,48 @@ export default function B02StudentProfileDetail() {
   const student = getStudentById(id || "s1")!;
   const studentClasses = getClassesForStudent(student.id);
   const proofs = getProofsForStudent(student.id);
+
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<Record<string, string[]>>({});
+
+  const toggleFilter = (group: string, option: string) => {
+    setFilters((prev) => {
+      const current = prev[group] || [];
+      return {
+        ...prev,
+        [group]: current.includes(option)
+          ? current.filter((o) => o !== option)
+          : [...current, option],
+      };
+    });
+  };
+
+  const filteredProofs = useMemo(() => {
+    let result = [...proofs];
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.note.toLowerCase().includes(q)
+      );
+    }
+
+    const selectedTypes = filters["Typ důkazu"] || [];
+    if (selectedTypes.length > 0) {
+      const typeMap: Record<string, string> = {
+        Text: "text",
+        Hlas: "voice",
+        Foto: "camera",
+        Soubor: "file",
+      };
+      const types = selectedTypes.map((t) => typeMap[t]).filter(Boolean);
+      result = result.filter((p) => types.includes(p.type));
+    }
+
+    return result;
+  }, [proofs, search, filters]);
 
   return (
     <AppLayout>
@@ -38,15 +80,10 @@ export default function B02StudentProfileDetail() {
           ))}
         </div>
 
-        <ClassFilterBar
-          groups={[
-            { label: "Typ důkazu", options: ["Text", "Hlas", "Foto", "Soubor"] },
-            { label: "Předmět", options: ["Matematika", "Český jazyk"] },
-          ]}
-        />
-
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Důkazy o učení</h2>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1">
+            <SearchBar placeholder="Hledat důkaz..." value={search} onChange={setSearch} />
+          </div>
           <Button asChild size="sm" className="gap-1">
             <Link to={`/student-profiles/${student.id}/add-proof`}>
               <Plus className="h-4 w-4" />
@@ -55,13 +92,24 @@ export default function B02StudentProfileDetail() {
           </Button>
         </div>
 
-        {proofs.length === 0 ? (
+        <ClassFilterBar
+          groups={[
+            { label: "Typ důkazu", options: ["Text", "Hlas", "Foto", "Soubor"] },
+            { label: "Předmět", options: ["Matematika", "Český jazyk"] },
+          ]}
+          selectedValues={filters}
+          onToggle={toggleFilter}
+        />
+
+        {filteredProofs.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            Zatím žádné důkazy o učení.
+            {proofs.length === 0
+              ? "Zatím žádné důkazy o učení."
+              : "Žádné důkazy neodpovídají vyhledávání."}
           </div>
         ) : (
           <div className="space-y-3">
-            {proofs.map((proof) => (
+            {filteredProofs.map((proof) => (
               <Link
                 key={proof.id}
                 to={
