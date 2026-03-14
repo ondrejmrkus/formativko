@@ -35,7 +35,7 @@ export default function A01Dashboard() {
     <AppLayout>
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
-          <img src={eliImage} alt="Eli mascot" className="h-28 w-28 object-contain" />
+          <img src={eliImage} alt="Eli mascot" className="h-80 w-80 object-contain" />
           <div>
             <h1 className="text-2xl font-bold mb-1">Dobrý den, Radovane!</h1>
             <p className="text-muted-foreground">
