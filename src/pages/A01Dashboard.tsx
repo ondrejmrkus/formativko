@@ -1,6 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Link } from "react-router-dom";
 import { Users, School, Camera, FileText } from "lucide-react";
+import eliImage from "@/assets/Eli.png";
 
 const actions = [
   {
@@ -33,10 +34,15 @@ export default function A01Dashboard() {
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold mb-1">Dobrý den, Radovane!</h1>
-        <p className="text-muted-foreground mb-8">
-          Jak vám mohu dnes pomoci?
-        </p>
+        <div className="flex items-center gap-4 mb-8">
+          <img src={eliImage} alt="Eli mascot" className="h-16 w-16 object-contain" />
+          <div>
+            <h1 className="text-2xl font-bold mb-1">Dobrý den, Radovane!</h1>
+            <p className="text-muted-foreground">
+              Jak vám mohu dnes pomoci?
+            </p>
+          </div>
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           {actions.map((action) => (
