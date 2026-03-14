@@ -1,4 +1,4 @@
-import { Home, Users, FileText, BookOpen, Camera } from "lucide-react";
+import { Home, Users, FileText, BookOpen } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
