@@ -1,6 +1,7 @@
 import { Home, Users, FileText, BookOpen } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useSidebar } from "@/components/ui/sidebar";
+import logoImage from "@/assets/logo.png";
 import {
   Sidebar,
   SidebarContent,
@@ -27,12 +28,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-            T
-          </div>
-          {!collapsed && (
-            <span className="text-lg font-bold text-foreground">Tiny</span>
-          )}
+          <img src={logoImage} alt="Tiny logo" className={`${collapsed ? "h-8 w-8 object-contain" : "h-7"}`} />
         </div>
       </SidebarHeader>
       <SidebarContent>
