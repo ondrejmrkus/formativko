@@ -1,6 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SearchBar } from "@/components/shared/SearchBar";
+import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -22,7 +23,7 @@ export default function C01Evaluations() {
         <div className="flex items-center gap-3 mb-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Vyhledat hodnocení</p>
         </div>
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-4">
           <div className="flex-1">
             <SearchBar placeholder="Hledat hodnocení..." />
           </div>
@@ -33,6 +34,13 @@ export default function C01Evaluations() {
             </Link>
           </Button>
         </div>
+
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Filtrovat</p>
+        <ClassFilterBar
+          groups={[
+            { label: "Třída", options: ["6.A", "7.B", "8.A", "9.C", "6.B"] },
+          ]}
+        />
 
         <div className="hidden sm:grid grid-cols-[1fr_auto] gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
           <span>Název hodnocení</span>

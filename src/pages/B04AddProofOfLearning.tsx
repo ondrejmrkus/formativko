@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
-import { Mic, Camera, Upload, FileText } from "lucide-react";
+import { Mic, Camera, Upload, FileText, Plus } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { getStudentById, getStudentDisplayName } from "@/data/mockData";
 
@@ -106,6 +106,10 @@ export default function B04AddProofOfLearning() {
             <label className="text-sm font-medium text-muted-foreground block mb-2">Žáci</label>
             <div className="flex flex-wrap gap-2">
               <StudentChip name={getStudentDisplayName(student)} removable />
+              <button className="flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-border text-sm text-muted-foreground hover:bg-accent transition-colors">
+                <Plus className="h-3 w-3" />
+                Připojit žáka
+              </button>
             </div>
           </div>
 

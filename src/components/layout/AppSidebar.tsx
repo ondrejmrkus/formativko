@@ -17,7 +17,6 @@ const navItems = [
   { title: "Žáci", url: "/student-profiles", icon: Users },
   { title: "Hodnocení", url: "/evaluations", icon: FileText },
   { title: "Lekce", url: "/lessons", icon: BookOpen },
-  { title: "Zachytávač", url: "/capture", icon: Camera },
 ];
 
 export function AppSidebar() {
