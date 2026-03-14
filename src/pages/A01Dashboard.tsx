@@ -1,7 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Link } from "react-router-dom";
 import { Users, School, Camera, FileText } from "lucide-react";
-import eliImage from "@/assets/Eli.png";
+import eliImage from "@/assets/Eli.svg";
 
 const actions = [
   {
