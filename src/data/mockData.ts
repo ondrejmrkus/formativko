@@ -35,10 +35,21 @@ export interface ProofOfLearning {
 export interface Evaluation {
   id: string;
   studentId: string;
-  status: "draft" | "final" | "none";
+  status: "draft" | "final" | "none" | "waiting" | "approved" | "insufficient";
   subject: string;
   period: string;
   text: string;
+  groupId?: string;
+}
+
+export interface EvaluationGroup {
+  id: string;
+  name: string;
+  type: "prubezna" | "tripartita" | "vysvedceni" | "vlastni";
+  studentCount: number;
+  dateFrom: string;
+  dateTo: string;
+  classId: string;
 }
 
 // ---------- Students ----------

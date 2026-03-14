@@ -1,15 +1,25 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { students, classes, getStudentDisplayName } from "@/data/mockData";
+import { Upload } from "lucide-react";
+import { useState } from "react";
+import { classes } from "@/data/mockData";
 
-const selectedStudentIds = ["s1", "s2", "s3", "s4", "s5"];
-const selectedStudents = students.filter((s) => selectedStudentIds.includes(s.id));
+const evalTypes = [
+  { id: "prubezna", label: "Průběžná zpětná vazba" },
+  { id: "tripartita", label: "Tripartita" },
+  { id: "vysvedceni", label: "Vysvědčení JINAK" },
+  { id: "vlastni", label: "Vlastní" },
+];
 
 export default function C02aCreateEvaluationDraft() {
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto">
@@ -17,60 +27,116 @@ export default function C02aCreateEvaluationDraft() {
           items={[
             { label: "Úvod", href: "/" },
             { label: "Hodnocení", href: "/evaluations" },
-            { label: "Vytvořit hodnocení" },
+            { label: "Tvorba hodnocení" },
           ]}
         />
 
-        <h1 className="text-2xl font-bold mb-2">Vytvořit hodnocení</h1>
-        <p className="text-muted-foreground mb-6">Krok 1 ze 2 — Nastavení</p>
+        <h1 className="text-2xl font-bold mb-6">Tvorba hodnocení</h1>
 
         <div className="space-y-6">
-          {/* Select students */}
+          {/* Evaluation type */}
           <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-2">
-              Vybrat žáky
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
+              Typ hodnocení
             </label>
-            <div className="flex flex-wrap gap-2 p-3 rounded-xl border border-border bg-card min-h-[48px]">
-              {selectedStudents.map((s) => (
-                <Badge key={s.id} variant="secondary" className="py-1">
-                  {getStudentDisplayName(s)}
-                </Badge>
+            <div className="grid grid-cols-2 gap-2">
+              {evalTypes.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedType(t.id)}
+                  className={`p-3 rounded-xl border text-sm font-medium transition-colors ${
+                    selectedType === t.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-card text-muted-foreground hover:border-primary/30"
+                  }`}
+                >
+                  {t.label}
+                </button>
               ))}
             </div>
           </div>
 
-          {/* Evaluation type */}
-          <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-2">
-              Typ hodnocení
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button className="p-3 rounded-xl border border-primary bg-primary/10 text-primary text-sm font-medium">
-                Slovní hodnocení
-              </button>
-              <button className="p-3 rounded-xl border border-border bg-card text-muted-foreground text-sm hover:border-primary/30">
-                Vysvědčení
-              </button>
+          {/* Period - shown after type selected */}
+          {selectedType && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
+                Vyberte období
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Od</label>
+                  <Input type="date" defaultValue="2026-01-01" className="bg-card" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground block mb-1">Do</label>
+                  <Input type="date" defaultValue="2026-03-14" className="bg-card" />
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Subject */}
-          <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-2">Předmět</label>
-            <Input defaultValue="Český jazyk" className="bg-card" />
-          </div>
+          {/* Class selector */}
+          {selectedType && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
+                Vyberte třídu
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {classes.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedClassId(c.id)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+                      selectedClassId === c.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/30"
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-          {/* Period */}
-          <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-2">Období</label>
-            <Input defaultValue="1. pololetí" className="bg-card" />
-          </div>
+          {/* Preferences */}
+          {selectedClassId && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
+                Popište vaše preference pro hodnocení
+              </label>
+              <Textarea
+                className="min-h-[100px] bg-card mb-3"
+                placeholder="Např. zaměřte se na pokrok žáka, používejte pozitivní formulace..."
+              />
+              <Button variant="outline" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Nahrát předlohu
+              </Button>
+            </div>
+          )}
 
-          <Button asChild className="w-full" size="lg">
-            <Link to="/evaluations/create/preview">
-              Vygenerovat koncept
-            </Link>
-          </Button>
+          {/* Template student */}
+          {selectedClassId && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
+                Nejdříve vytvořím hodnocení pro jednoho žáka jako předlohu. Kým začneme?
+              </label>
+              <Input
+                className="bg-card"
+                placeholder="Začněte psát jméno žáka..."
+              />
+            </div>
+          )}
+
+          {/* Submit */}
+          {selectedClassId && (
+            <Button asChild className="w-full" size="lg">
+              <Link to="/evaluations/create/preview">
+                Vytvořit draft hodnocení
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
     </AppLayout>
