@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Mic, Camera, Upload, FileText, Plus } from "lucide-react";
-import { useParams } from "react-router-dom";
 import { getStudentById, getStudentDisplayName } from "@/data/mockData";
+import { useToast } from "@/hooks/use-toast";
 
 type ProofType = "text" | "voice" | "camera" | "file";
 
@@ -22,8 +23,21 @@ const proofTypes: { type: ProofType; label: string; icon: React.ElementType }[] 
 
 export default function B04AddProofOfLearning() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const student = getStudentById(id || "s1")!;
   const [selectedType, setSelectedType] = useState<ProofType>("text");
+  const [title, setTitle] = useState("");
+  const [note, setNote] = useState("");
+
+  const handleSave = () => {
+    if (!title.trim()) {
+      toast({ title: "Zadejte název důkazu", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Důkaz o učení uložen" });
+    navigate(`/student-profiles/${student.id}`);
+  };
 
   return (
     <AppLayout>
@@ -62,7 +76,12 @@ export default function B04AddProofOfLearning() {
           {selectedType === "text" && (
             <div>
               <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámka</label>
-              <Textarea className="min-h-[120px] bg-card" placeholder="Napište poznámku..." />
+              <Textarea
+                className="min-h-[120px] bg-card"
+                placeholder="Napište poznámku..."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
             </div>
           )}
 
@@ -96,7 +115,12 @@ export default function B04AddProofOfLearning() {
           {/* Common fields */}
           <div>
             <label className="text-sm font-medium text-muted-foreground block mb-2">Název důkazu</label>
-            <Input placeholder="Pojmenujte důkaz o učení..." className="bg-card" />
+            <Input
+              placeholder="Pojmenujte důkaz o učení..."
+              className="bg-card"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </div>
 
           <LessonLinkField />
@@ -120,7 +144,7 @@ export default function B04AddProofOfLearning() {
             </div>
           )}
 
-          <Button className="w-full" size="lg">
+          <Button className="w-full" size="lg" onClick={handleSave}>
             Uložit
           </Button>
         </div>

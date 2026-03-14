@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { getStudentById, getStudentDisplayName } from "@/data/mockData";
+import { useToast } from "@/hooks/use-toast";
 
 type DraftStatus = "waiting" | "approved" | "insufficient";
 
-const draftStudents: { id: string; status: DraftStatus }[] = [
+const initialDraftStudents: { id: string; status: DraftStatus }[] = [
   { id: "s1", status: "waiting" },
   { id: "s2", status: "approved" },
   { id: "s3", status: "waiting" },
@@ -32,7 +33,7 @@ const statusConfig: Record<DraftStatus, { label: string; className: string }> = 
   },
 };
 
-const draftTexts: Record<string, string> = {
+const initialDraftTexts: Record<string, string> = {
   s1: "Adam se v hodinách českého jazyka aktivně zapojuje do diskuzí a prokazuje dobré porozumění literárním textům. Jeho písemný projev se zlepšuje, ale stále je třeba pracovat na pravopisu.",
   s2: "Barbora je výborná studentka s vynikajícím písemným projevem. Její slohové práce jsou kreativní a gramaticky správné.",
   s3: "Cyril se v hodinách snaží, ale potřebuje více času na zpracování úkolů. Doporučuji individuální přístup.",
@@ -41,9 +42,35 @@ const draftTexts: Record<string, string> = {
 };
 
 export default function C03EditEvaluationDrafts() {
+  const { toast } = useToast();
   const [selectedStudentId, setSelectedStudentId] = useState("s1");
+  const [draftStudents, setDraftStudents] = useState(initialDraftStudents);
+  const [draftTexts, setDraftTexts] = useState(initialDraftTexts);
+
   const selectedStudent = getStudentById(selectedStudentId)!;
   const selectedDraft = draftStudents.find((d) => d.id === selectedStudentId)!;
+
+  const handleApprove = () => {
+    setDraftStudents((prev) =>
+      prev.map((d) => (d.id === selectedStudentId ? { ...d, status: "approved" as DraftStatus } : d))
+    );
+    toast({ title: `Hodnocení pro ${getStudentDisplayName(selectedStudent)} schváleno` });
+  };
+
+  const handleCopy = () => {
+    const text = draftTexts[selectedStudentId] || "";
+    navigator.clipboard.writeText(text);
+    toast({ title: "Text zkopírován do schránky" });
+  };
+
+  const handleExportAll = () => {
+    const approved = draftStudents.filter((d) => d.status === "approved").length;
+    toast({ title: "Export dokončen", description: `${approved} schválených hodnocení exportováno` });
+  };
+
+  const handleTextChange = (value: string) => {
+    setDraftTexts((prev) => ({ ...prev, [selectedStudentId]: value }));
+  };
 
   return (
     <AppLayout>
@@ -89,7 +116,7 @@ export default function C03EditEvaluationDrafts() {
               })}
             </div>
 
-            <Button variant="outline" className="w-full mt-4" size="lg">
+            <Button variant="outline" className="w-full mt-4" size="lg" onClick={handleExportAll}>
               Exportovat vše
             </Button>
           </div>
@@ -99,11 +126,16 @@ export default function C03EditEvaluationDrafts() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-lg">{getStudentDisplayName(selectedStudent)}</h2>
               <div className="flex gap-2">
-                <Button size="sm" className="gap-1">
+                <Button
+                  size="sm"
+                  className="gap-1"
+                  onClick={handleApprove}
+                  disabled={selectedDraft.status === "approved"}
+                >
                   <Check className="h-3.5 w-3.5" />
-                  Schválit
+                  {selectedDraft.status === "approved" ? "Schváleno" : "Schválit"}
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1">
+                <Button size="sm" variant="outline" className="gap-1" onClick={handleCopy}>
                   <Copy className="h-3.5 w-3.5" />
                   Zkopírovat text
                 </Button>
@@ -112,8 +144,8 @@ export default function C03EditEvaluationDrafts() {
 
             <Textarea
               className="min-h-[300px] bg-card"
-              defaultValue={draftTexts[selectedStudentId] || ""}
-              key={selectedStudentId}
+              value={draftTexts[selectedStudentId] || ""}
+              onChange={(e) => handleTextChange(e.target.value)}
             />
           </div>
         </div>

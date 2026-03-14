@@ -1,18 +1,42 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Upload } from "lucide-react";
-
-const fakeRows = [
-  { first: "Jan", last: "Novotný" },
-  { first: "Marie", last: "Dvořáková" },
-  { first: "Petr", last: "Svoboda" },
-  { first: "", last: "" },
-  { first: "", last: "" },
-];
+import { Plus, Upload, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function A02CreateStudentProfiles() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [rows, setRows] = useState([
+    { first: "", last: "" },
+    { first: "", last: "" },
+    { first: "", last: "" },
+  ]);
+
+  const updateRow = (index: number, field: "first" | "last", value: string) => {
+    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
+  };
+
+  const addRow = () => setRows((prev) => [...prev, { first: "", last: "" }]);
+
+  const removeRow = (index: number) => {
+    if (rows.length <= 1) return;
+    setRows((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSave = () => {
+    const filled = rows.filter((r) => r.first.trim() && r.last.trim());
+    if (filled.length === 0) {
+      toast({ title: "Vyplňte alespoň jednoho žáka", variant: "destructive" });
+      return;
+    }
+    toast({ title: `${filled.length} ${filled.length === 1 ? "profil vytvořen" : "profilů vytvořeno"}` });
+    navigate("/student-profiles");
+  };
+
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto">
@@ -26,30 +50,41 @@ export default function A02CreateStudentProfiles() {
         <h1 className="text-2xl font-bold mb-6">Vytvořit žákovské profily</h1>
 
         <div className="space-y-3 mb-4">
-          {fakeRows.map((row, i) => (
-            <div key={i} className="flex gap-3">
-              <Input placeholder="Jméno" defaultValue={row.first} className="bg-card" />
-              <Input placeholder="Příjmení" defaultValue={row.last} className="bg-card" />
+          {rows.map((row, i) => (
+            <div key={i} className="flex gap-3 items-center">
+              <Input
+                placeholder="Jméno"
+                value={row.first}
+                onChange={(e) => updateRow(i, "first", e.target.value)}
+                className="bg-card"
+              />
+              <Input
+                placeholder="Příjmení"
+                value={row.last}
+                onChange={(e) => updateRow(i, "last", e.target.value)}
+                className="bg-card"
+              />
+              {rows.length > 1 && (
+                <button onClick={() => removeRow(i)} className="p-1 text-muted-foreground hover:text-destructive shrink-0">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
           ))}
         </div>
 
-        <Button variant="ghost" className="gap-2 text-primary mb-8">
+        <Button variant="ghost" className="gap-2 text-primary mb-8" onClick={addRow}>
           <Plus className="h-4 w-4" />
           Přidat dalšího žáka
         </Button>
 
         <div className="border-2 border-dashed border-border rounded-xl p-8 text-center mb-6 bg-card">
           <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground mb-1">
-            Hromadné nahrání žáků
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Přetáhněte sem soubor CSV nebo klikněte pro výběr
-          </p>
+          <p className="text-sm text-muted-foreground mb-1">Hromadné nahrání žáků</p>
+          <p className="text-xs text-muted-foreground">Přetáhněte sem soubor CSV nebo klikněte pro výběr</p>
         </div>
 
-        <Button className="w-full" size="lg">
+        <Button className="w-full" size="lg" onClick={handleSave}>
           Uložit profily
         </Button>
       </div>

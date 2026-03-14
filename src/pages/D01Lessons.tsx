@@ -1,18 +1,15 @@
+import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SearchBar } from "@/components/shared/SearchBar";
 import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowRight } from "lucide-react";
-import { lessons, classes } from "@/data/mockData";
-
-const ongoing = lessons.filter((l) => l.status === "ongoing");
-const prepared = lessons.filter((l) => l.status === "prepared");
-const past = lessons.filter((l) => l.status === "past");
+import { lessons, classes, type Lesson } from "@/data/mockData";
 
 interface LessonSectionProps {
   title: string;
-  items: typeof lessons;
+  items: Lesson[];
   showArrow?: boolean;
   dimmed?: boolean;
 }
@@ -28,7 +25,7 @@ function LessonSection({ title, items, showArrow = false, dimmed = false }: Less
         {items.map((lesson) => (
           <div
             key={lesson.id}
-            className={`flex items-center justify-between p-3 rounded-xl border border-border bg-card ${dimmed ? "opacity-60" : "hover:border-primary/30 hover:shadow-sm"} transition-all`}
+            className={`flex items-center justify-between p-3 rounded-xl border border-border bg-card ${dimmed ? "opacity-60" : "hover:border-primary/30 hover:shadow-sm cursor-pointer"} transition-all`}
           >
             <div>
               <span className={`font-medium text-sm ${dimmed ? "text-muted-foreground" : "text-foreground"}`}>
@@ -51,6 +48,49 @@ function LessonSection({ title, items, showArrow = false, dimmed = false }: Less
 }
 
 export default function D01Lessons() {
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<Record<string, string[]>>({});
+
+  const toggleFilter = (group: string, option: string) => {
+    setFilters((prev) => {
+      const current = prev[group] || [];
+      return {
+        ...prev,
+        [group]: current.includes(option)
+          ? current.filter((o) => o !== option)
+          : [...current, option],
+      };
+    });
+  };
+
+  const filteredLessons = useMemo(() => {
+    let result = [...lessons];
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((l) => l.title.toLowerCase().includes(q));
+    }
+
+    const selectedClasses = filters["Třída"] || [];
+    if (selectedClasses.length > 0) {
+      const classIds = classes
+        .filter((c) => selectedClasses.includes(c.name))
+        .map((c) => c.id);
+      result = result.filter((l) => classIds.includes(l.classId));
+    }
+
+    const selectedSubjects = filters["Předmět"] || [];
+    if (selectedSubjects.length > 0) {
+      result = result.filter((l) => selectedSubjects.includes(l.subject));
+    }
+
+    return result;
+  }, [search, filters]);
+
+  const ongoing = filteredLessons.filter((l) => l.status === "ongoing");
+  const prepared = filteredLessons.filter((l) => l.status === "prepared");
+  const past = filteredLessons.filter((l) => l.status === "past");
+
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto">
@@ -70,19 +110,29 @@ export default function D01Lessons() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mb-4">
-          <SearchBar placeholder="Hledat lekci..." />
+          <SearchBar placeholder="Hledat lekci..." value={search} onChange={setSearch} />
         </div>
 
         <ClassFilterBar
           groups={[
             { label: "Třída", options: classes.map((c) => c.name) },
-            { label: "Předmět", options: ["Matematika", "Český jazyk", "Přírodopis", "Angličtina"] },
+            { label: "Předmět", options: ["Matematika", "Český jazyk", "Přírodopis", "Angličtina", "Dějepis", "Fyzika"] },
           ]}
+          selectedValues={filters}
+          onToggle={toggleFilter}
         />
 
-        <LessonSection title="Probíhající lekce" items={ongoing} showArrow />
-        <LessonSection title="Připravené lekce" items={prepared} showArrow />
-        <LessonSection title="Proběhlé lekce" items={past} dimmed />
+        {filteredLessons.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            Žádné lekce neodpovídají vyhledávání.
+          </div>
+        ) : (
+          <>
+            <LessonSection title="Probíhající lekce" items={ongoing} showArrow />
+            <LessonSection title="Připravené lekce" items={prepared} showArrow />
+            <LessonSection title="Proběhlé lekce" items={past} dimmed />
+          </>
+        )}
       </div>
     </AppLayout>
   );

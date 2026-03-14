@@ -8,23 +8,31 @@ interface FilterGroup {
 
 interface ClassFilterBarProps {
   groups: FilterGroup[];
+  selectedValues?: Record<string, string[]>;
+  onToggle?: (groupLabel: string, option: string) => void;
 }
 
-export function ClassFilterBar({ groups }: ClassFilterBarProps) {
+export function ClassFilterBar({ groups, selectedValues = {}, onToggle }: ClassFilterBarProps) {
   return (
     <div className="flex flex-wrap gap-4 mb-4">
       {groups.map((group) => (
         <div key={group.label} className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-muted-foreground">{group.label}:</span>
-          {group.options.map((option) => (
-            <Badge
-              key={option}
-              variant="secondary"
-              className="cursor-pointer hover:bg-accent"
-            >
-              {option}
-            </Badge>
-          ))}
+          {group.options.map((option) => {
+            const isSelected = selectedValues[group.label]?.includes(option);
+            return (
+              <Badge
+                key={option}
+                variant={isSelected ? "default" : "secondary"}
+                className={`cursor-pointer transition-colors ${
+                  isSelected ? "" : "hover:bg-accent"
+                }`}
+                onClick={() => onToggle?.(group.label, option)}
+              >
+                {option}
+              </Badge>
+            );
+          })}
           <Badge
             variant="outline"
             className="cursor-pointer hover:bg-accent gap-1"
