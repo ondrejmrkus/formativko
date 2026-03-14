@@ -60,8 +60,8 @@ export default function B03bProofOfLearningDetailFile() {
             </div>
           </div>
 
-          <LessonLinkField lessonTitle="Skupinová práce — zlomky" />
-          <DateField date={proof.date} />
+          <LessonLinkField lessonId={proof.lessonId || null} />
+          <DateField date={new Date(proof.date)} />
 
           <div>
             <label className="text-sm font-medium text-muted-foreground block mb-2">Žáci</label>
