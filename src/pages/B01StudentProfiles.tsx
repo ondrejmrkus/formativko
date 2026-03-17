@@ -109,6 +109,12 @@ export default function B01StudentProfiles() {
 
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">Profily žáků</h1>
+          <Button asChild size="sm">
+            <Link to="/create-student-profiles">
+              <Plus className="h-4 w-4 mr-1" />
+              Nový žák
+            </Link>
+          </Button>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mb-4">
