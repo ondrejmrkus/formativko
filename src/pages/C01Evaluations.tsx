@@ -5,18 +5,48 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Check, Clock, AlertTriangle } from "lucide-react";
 import { useEvaluationGroups, useDeleteEvaluationGroup } from "@/hooks/useEvaluations";
 import { useClasses } from "@/hooks/useClasses";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function C01Evaluations() {
+  const { user } = useAuth();
   const { data: evaluationGroups = [], isLoading } = useEvaluationGroups();
   const { data: classes = [] } = useClasses();
   const deleteGroup = useDeleteEvaluationGroup();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
+
+  // Fetch all evaluations to compute per-group stats
+  const { data: allEvaluations = [] } = useQuery({
+    queryKey: ["evaluations", "all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("evaluations")
+        .select("id, group_id, status");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const groupStats = useMemo(() => {
+    const map: Record<string, { total: number; approved: number; waiting: number; insufficient: number }> = {};
+    for (const ev of allEvaluations) {
+      if (!ev.group_id) continue;
+      if (!map[ev.group_id]) map[ev.group_id] = { total: 0, approved: 0, waiting: 0, insufficient: 0 };
+      map[ev.group_id].total++;
+      if (ev.status === "approved") map[ev.group_id].approved++;
+      else if (ev.status === "insufficient") map[ev.group_id].insufficient++;
+      else map[ev.group_id].waiting++;
+    }
+    return map;
+  }, [allEvaluations]);
 
   const toggleFilter = (group: string, option: string) => {
     setFilters((prev) => {
@@ -85,8 +115,9 @@ export default function C01Evaluations() {
           onToggle={toggleFilter}
         />
 
-        <div className="hidden sm:grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
+        <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
           <span>Název hodnocení</span>
+          <span className="w-48 text-center">Stav žáků</span>
           <span className="w-24 text-center">Třída</span>
           <span className="w-10"></span>
         </div>
@@ -101,14 +132,38 @@ export default function C01Evaluations() {
           <div className="divide-y divide-border">
             {filteredGroups.map((group) => {
               const cls = classes.find((c) => c.id === group.class_id);
+              const stats = groupStats[group.id] || { total: 0, approved: 0, waiting: 0, insufficient: 0 };
               return (
                 <div
                   key={group.id}
-                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
+                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
                 >
                   <Link to={`/evaluations/edit/${group.id}`} className="font-medium text-foreground hover:underline">
                     {group.name}
                   </Link>
+                  <div className="w-48 flex items-center justify-center gap-3 text-xs">
+                    {stats.approved > 0 && (
+                      <span className="flex items-center gap-1 text-green-600">
+                        <Check className="h-3.5 w-3.5" />
+                        {stats.approved}
+                      </span>
+                    )}
+                    {stats.waiting > 0 && (
+                      <span className="flex items-center gap-1 text-yellow-600">
+                        <Clock className="h-3.5 w-3.5" />
+                        {stats.waiting}
+                      </span>
+                    )}
+                    {stats.insufficient > 0 && (
+                      <span className="flex items-center gap-1 text-destructive">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        {stats.insufficient}
+                      </span>
+                    )}
+                    <span className="text-muted-foreground">
+                      ({stats.total} žáků)
+                    </span>
+                  </div>
                   <span className="w-24 text-center text-sm text-muted-foreground">
                     {cls?.name || "—"}
                   </span>
