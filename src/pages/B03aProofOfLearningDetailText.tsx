@@ -4,17 +4,40 @@ import { StudentChip } from "@/components/shared/StudentChip";
 import { LessonLinkField } from "@/components/shared/LessonLinkField";
 import { DateField } from "@/components/shared/DateField";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Pencil } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { Trash2 } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useStudent, useStudents, getStudentDisplayName } from "@/hooks/useStudents";
-import { useProof } from "@/hooks/useProofs";
+import { useProof, useUpdateProof, useDeleteProof } from "@/hooks/useProofs";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function B03aProofOfLearningDetailText() {
   const { id, proofId } = useParams<{ id: string; proofId: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const { data: student, isLoading: studentLoading } = useStudent(id);
   const { data: proof, isLoading: proofLoading } = useProof(proofId);
   const { data: allStudents = [] } = useStudents();
+  const updateProof = useUpdateProof();
+  const deleteProof = useDeleteProof();
+
+  const [title, setTitle] = useState("");
+  const [note, setNote] = useState("");
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (!initialized && proof) {
+      setTitle(proof.title);
+      setNote(proof.note || "");
+      setInitialized(true);
+    }
+  }, [proof, initialized]);
 
   if (studentLoading || proofLoading || !student || !proof) {
     return <AppLayout><div className="text-center py-12 text-muted-foreground">Načítání…</div></AppLayout>;
@@ -23,6 +46,27 @@ export default function B03aProofOfLearningDetailText() {
   const linkedStudents = proof.studentIds
     .map((sid) => allStudents.find((s) => s.id === sid))
     .filter(Boolean);
+
+  const handleSave = async () => {
+    if (!proofId) return;
+    try {
+      await updateProof.mutateAsync({ id: proofId, title, note, date: proof.date, lessonId: proof.lesson_id });
+      toast({ title: "Důkaz uložen" });
+    } catch {
+      toast({ title: "Chyba při ukládání", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!proofId) return;
+    try {
+      await deleteProof.mutateAsync(proofId);
+      toast({ title: "Důkaz smazán" });
+      navigate(`/student-profiles/${id}`);
+    } catch {
+      toast({ title: "Chyba při mazání", variant: "destructive" });
+    }
+  };
 
   return (
     <AppLayout>
@@ -37,10 +81,28 @@ export default function B03aProofOfLearningDetailText() {
         />
 
         <div className="flex items-center gap-2 mb-6">
-          <h1 className="text-2xl font-bold flex-1">{proof.title}</h1>
-          <button className="p-2 hover:bg-accent rounded-lg">
-            <Pencil className="h-4 w-4 text-muted-foreground" />
-          </button>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="text-2xl font-bold bg-transparent border-none p-0 h-auto focus-visible:ring-0 flex-1"
+          />
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button className="p-2 hover:bg-destructive/10 rounded-lg">
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Smazat důkaz o učení?</AlertDialogTitle>
+                <AlertDialogDescription>Tuto akci nelze vrátit zpět.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Zrušit</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Smazat</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         <div className="space-y-4">
@@ -60,12 +122,13 @@ export default function B03aProofOfLearningDetailText() {
             <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámka</label>
             <Textarea
               className="min-h-[120px] bg-card"
-              defaultValue={proof.note || ""}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
             />
           </div>
 
-          <Button className="w-full" size="lg">
-            Uložit
+          <Button className="w-full" size="lg" onClick={handleSave} disabled={updateProof.isPending}>
+            {updateProof.isPending ? "Ukládání…" : "Uložit"}
           </Button>
         </div>
       </div>
