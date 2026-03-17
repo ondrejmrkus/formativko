@@ -3,7 +3,10 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
+import Login from "./pages/Login";
 import A01Dashboard from "./pages/A01Dashboard";
 import A02CreateStudentProfiles from "./pages/A02CreateStudentProfiles";
 import A03CreateClass from "./pages/A03CreateClass";
@@ -29,24 +32,27 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<A01Dashboard />} />
-          <Route path="/create-student-profiles" element={<A02CreateStudentProfiles />} />
-          <Route path="/create-class" element={<A03CreateClass />} />
-          <Route path="/student-profiles" element={<B01StudentProfiles />} />
-          <Route path="/student-profiles/:id" element={<B02StudentProfileDetail />} />
-          <Route path="/student-profiles/:id/proof/:proofId" element={<B03aProofOfLearningDetailText />} />
-          <Route path="/student-profiles/:id/proof-file/:proofId" element={<B03bProofOfLearningDetailFile />} />
-          <Route path="/student-profiles/:id/add-proof" element={<B04AddProofOfLearning />} />
-          <Route path="/evaluations" element={<C01Evaluations />} />
-          <Route path="/evaluations/create" element={<C02aCreateEvaluationDraft />} />
-          <Route path="/evaluations/create/preview" element={<C02bCreateEvaluationDraft />} />
-          <Route path="/evaluations/edit/:id" element={<C03EditEvaluationDrafts />} />
-          <Route path="/lessons" element={<D01Lessons />} />
-          <Route path="/capture" element={<E01CaptureToolChooseClass />} />
-          <Route path="/capture/:classId" element={<E02CaptureToolAddProofs />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<ProtectedRoute><A01Dashboard /></ProtectedRoute>} />
+            <Route path="/create-student-profiles" element={<ProtectedRoute><A02CreateStudentProfiles /></ProtectedRoute>} />
+            <Route path="/create-class" element={<ProtectedRoute><A03CreateClass /></ProtectedRoute>} />
+            <Route path="/student-profiles" element={<ProtectedRoute><B01StudentProfiles /></ProtectedRoute>} />
+            <Route path="/student-profiles/:id" element={<ProtectedRoute><B02StudentProfileDetail /></ProtectedRoute>} />
+            <Route path="/student-profiles/:id/proof/:proofId" element={<ProtectedRoute><B03aProofOfLearningDetailText /></ProtectedRoute>} />
+            <Route path="/student-profiles/:id/proof-file/:proofId" element={<ProtectedRoute><B03bProofOfLearningDetailFile /></ProtectedRoute>} />
+            <Route path="/student-profiles/:id/add-proof" element={<ProtectedRoute><B04AddProofOfLearning /></ProtectedRoute>} />
+            <Route path="/evaluations" element={<ProtectedRoute><C01Evaluations /></ProtectedRoute>} />
+            <Route path="/evaluations/create" element={<ProtectedRoute><C02aCreateEvaluationDraft /></ProtectedRoute>} />
+            <Route path="/evaluations/create/preview" element={<ProtectedRoute><C02bCreateEvaluationDraft /></ProtectedRoute>} />
+            <Route path="/evaluations/edit/:id" element={<ProtectedRoute><C03EditEvaluationDrafts /></ProtectedRoute>} />
+            <Route path="/lessons" element={<ProtectedRoute><D01Lessons /></ProtectedRoute>} />
+            <Route path="/capture" element={<ProtectedRoute><E01CaptureToolChooseClass /></ProtectedRoute>} />
+            <Route path="/capture/:classId" element={<ProtectedRoute><E02CaptureToolAddProofs /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
