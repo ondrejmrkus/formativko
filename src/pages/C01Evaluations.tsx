@@ -91,9 +91,6 @@ export default function C01Evaluations() {
 
         <h1 className="text-2xl font-bold mb-6">Hodnocení</h1>
 
-        <div className="flex items-center gap-3 mb-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Vyhledat hodnocení</p>
-        </div>
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1">
             <SearchBar placeholder="Hledat hodnocení..." value={search} onChange={setSearch} />
@@ -106,7 +103,6 @@ export default function C01Evaluations() {
           </Button>
         </div>
 
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Filtrovat</p>
         <ClassFilterBar
           groups={[
             { label: "Třída", options: classes.map((c) => c.name) },
