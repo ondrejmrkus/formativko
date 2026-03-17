@@ -65,35 +65,18 @@ export function useCreateProof() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      title,
-      type,
-      note,
-      date,
-      lessonId,
-      studentIds,
-      fileName,
-      fileUrl,
+      title, type, note, date, lessonId, studentIds, fileName, fileUrl,
     }: {
-      title: string;
-      type: string;
-      note?: string;
-      date: string;
-      lessonId?: string | null;
-      studentIds: string[];
-      fileName?: string;
-      fileUrl?: string;
+      title: string; type: string; note?: string; date: string;
+      lessonId?: string | null; studentIds: string[];
+      fileName?: string; fileUrl?: string;
     }) => {
       const { data: proof, error } = await supabase
         .from("proofs_of_learning")
         .insert({
-          title,
-          type,
-          note: note || "",
-          date,
-          lesson_id: lessonId || null,
-          teacher_id: user!.id,
-          file_name: fileName || null,
-          file_url: fileUrl || null,
+          title, type, note: note || "", date,
+          lesson_id: lessonId || null, teacher_id: user!.id,
+          file_name: fileName || null, file_url: fileUrl || null,
         })
         .select()
         .single();
@@ -105,6 +88,39 @@ export function useCreateProof() {
         if (err2) throw err2;
       }
       return proof;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["proofs"] });
+    },
+  });
+}
+
+export function useUpdateProof() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, title, note, date, lessonId }: {
+      id: string; title: string; note: string; date: string; lessonId?: string | null;
+    }) => {
+      const { error } = await supabase
+        .from("proofs_of_learning")
+        .update({ title, note, date, lesson_id: lessonId || null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["proofs"] });
+    },
+  });
+}
+
+export function useDeleteProof() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error: psErr } = await supabase.from("proof_students").delete().eq("proof_id", id);
+      if (psErr) throw psErr;
+      const { error } = await supabase.from("proofs_of_learning").delete().eq("id", id);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["proofs"] });

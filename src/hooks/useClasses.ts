@@ -82,21 +82,12 @@ export function useCreateClass() {
 }
 
 export function useUpdateClass() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ classId, name, studentIds }: { classId: string; name: string; studentIds: string[] }) => {
-      // Update class name
-      const { error } = await supabase
-        .from("classes")
-        .update({ name })
-        .eq("id", classId);
+      const { error } = await supabase.from("classes").update({ name }).eq("id", classId);
       if (error) throw error;
-      // Replace students: delete all, then insert new
-      const { error: delErr } = await supabase
-        .from("class_students")
-        .delete()
-        .eq("class_id", classId);
+      const { error: delErr } = await supabase.from("class_students").delete().eq("class_id", classId);
       if (delErr) throw delErr;
       if (studentIds.length > 0) {
         const rows = studentIds.map((sid) => ({ class_id: classId, student_id: sid }));
@@ -109,6 +100,30 @@ export function useUpdateClass() {
       queryClient.invalidateQueries({ queryKey: ["class_students"] });
       queryClient.invalidateQueries({ queryKey: ["student_classes"] });
       queryClient.invalidateQueries({ queryKey: ["all_class_students"] });
+    },
+  });
+}
+
+export function useDeleteClass() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (classId: string) => {
+      const { error: csErr } = await supabase.from("class_students").delete().eq("class_id", classId);
+      if (csErr) throw csErr;
+      // Unlink evaluation groups
+      const { error: egErr } = await supabase.from("evaluation_groups").update({ class_id: null }).eq("class_id", classId);
+      if (egErr) throw egErr;
+      // Unlink lessons
+      const { error: lErr } = await supabase.from("lessons").update({ class_id: null }).eq("class_id", classId);
+      if (lErr) throw lErr;
+      const { error } = await supabase.from("classes").delete().eq("id", classId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["classes"] });
+      queryClient.invalidateQueries({ queryKey: ["class_students"] });
+      queryClient.invalidateQueries({ queryKey: ["all_class_students"] });
+      queryClient.invalidateQueries({ queryKey: ["student_classes"] });
     },
   });
 }
