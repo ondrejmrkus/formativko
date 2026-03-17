@@ -51,15 +51,18 @@ export default function C03EditEvaluationDrafts() {
     return "waiting";
   };
 
-  const handleApprove = async () => {
+  const handleToggleApprove = async () => {
     if (!activeEvalId) return;
-    setLocalStatuses((prev) => ({ ...prev, [activeEvalId]: "approved" }));
+    const currentStatus = getStatus(activeEvalId);
+    const newStatus = currentStatus === "approved" ? "waiting" : "approved";
+    setLocalStatuses((prev) => ({ ...prev, [activeEvalId]: newStatus as DraftStatus }));
     try {
-      await updateEval.mutateAsync({ id: activeEvalId, text: getText(activeEvalId), status: "approved" });
+      await updateEval.mutateAsync({ id: activeEvalId, text: getText(activeEvalId), status: newStatus });
       const student = activeEval ? getStudent(activeEval.student_id) : null;
-      toast({ title: `Hodnocení pro ${student ? getStudentDisplayName(student) : "žáka"} schváleno` });
+      const label = newStatus === "approved" ? "schváleno" : "vráceno ke kontrole";
+      toast({ title: `Hodnocení pro ${student ? getStudentDisplayName(student) : "žáka"} ${label}` });
     } catch {
-      toast({ title: "Chyba při schvalování", variant: "destructive" });
+      toast({ title: "Chyba při změně stavu", variant: "destructive" });
     }
   };
 
