@@ -104,6 +104,41 @@ export default function A01Dashboard() {
           </div>
         </div>
 
+        {/* Recent proofs — card style like student profile but compact */}
+        {recentProofs.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Poslední důkazy o učení
+            </h2>
+            <div className="space-y-2">
+              {recentProofs.map((proof) => {
+                const firstStudentId = proof.proof_students?.[0]?.student_id;
+                const proofLink = firstStudentId
+                  ? (proof.type === "file" || proof.type === "camera")
+                    ? `/student-profiles/${firstStudentId}/proof-file/${proof.id}`
+                    : `/student-profiles/${firstStudentId}/proof/${proof.id}`
+                  : "#";
+                return (
+                  <Link
+                    key={proof.id}
+                    to={proofLink}
+                    className="block p-3 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="font-medium text-foreground text-sm truncate">{proof.title}</h3>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant="outline" className="text-[10px] capitalize">{proofTypeLabels[proof.type] || proof.type}</Badge>
+                        <span className="text-xs text-muted-foreground">{proof.date}</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Pending evaluations */}
         {Object.keys(pendingByGroup).length > 0 && (
           <div className="mb-8">
@@ -140,41 +175,6 @@ export default function A01Dashboard() {
                     <span className="shrink-0 ml-3 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
                       {evals.length} čeká
                     </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Recent proofs */}
-        {recentProofs.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
-              Poslední důkazy o učení
-            </h2>
-            <div className="space-y-1">
-              {recentProofs.map((proof) => {
-                const firstStudentId = proof.proof_students?.[0]?.student_id;
-                const proofLink = firstStudentId
-                  ? `/student-profiles/${firstStudentId}/proof/${proof.id}`
-                  : "#";
-                return (
-                  <Link
-                    key={proof.id}
-                    to={proofLink}
-                    className="flex items-center justify-between px-4 py-2.5 rounded-lg hover:bg-accent/50 transition-colors"
-                  >
-                    <span className="text-sm text-foreground truncate min-w-0">{proof.title}</span>
-                    <div className="flex items-center gap-3 shrink-0 ml-2">
-                      <span className="text-xs text-muted-foreground">
-                        {proofTypeLabels[proof.type] || proof.type}
-                      </span>
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {proof.date}
-                      </span>
-                    </div>
                   </Link>
                 );
               })}
