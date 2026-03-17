@@ -95,7 +95,7 @@ export default function C02bCreateEvaluationDraft() {
 
           const studentNoProofs = data?.noProofs === true;
           const evalText = studentNoProofs ? "" : (data?.text || "");
-          const evalStatus = studentNoProofs ? "Nedostatek důkazů" : "waiting";
+          const evalStatus = studentNoProofs ? "insufficient" : "waiting";
 
           await createEval.mutateAsync({
             studentId: student.id,
