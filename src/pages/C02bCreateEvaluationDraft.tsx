@@ -158,7 +158,7 @@ export default function C02bCreateEvaluationDraft() {
             )}
 
             <Textarea
-              className="min-h-[160px] bg-background"
+              className="min-h-[280px] lg:min-h-[400px] bg-background"
               value={draftText}
               onChange={(e) => setDraftText(e.target.value)}
               placeholder={noProofs ? "Žádné hodnocení — nedostatek důkazů o učení." : ""}
