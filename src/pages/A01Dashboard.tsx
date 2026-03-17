@@ -155,22 +155,29 @@ export default function A01Dashboard() {
               Poslední důkazy o učení
             </h2>
             <div className="space-y-1">
-              {recentProofs.map((proof) => (
-                <div
-                  key={proof.id}
-                  className="flex items-center justify-between px-4 py-2.5 rounded-lg hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">
-                      {proof.date}
-                    </span>
-                    <span className="text-sm text-foreground truncate">{proof.title}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground shrink-0 ml-2">
-                    {proofTypeLabels[proof.type] || proof.type}
-                  </span>
-                </div>
-              ))}
+              {recentProofs.map((proof) => {
+                const firstStudentId = proof.proof_students?.[0]?.student_id;
+                const proofLink = firstStudentId
+                  ? `/student-profiles/${firstStudentId}/proof/${proof.id}`
+                  : "#";
+                return (
+                  <Link
+                    key={proof.id}
+                    to={proofLink}
+                    className="flex items-center justify-between px-4 py-2.5 rounded-lg hover:bg-accent/50 transition-colors"
+                  >
+                    <span className="text-sm text-foreground truncate min-w-0">{proof.title}</span>
+                    <div className="flex items-center gap-3 shrink-0 ml-2">
+                      <span className="text-xs text-muted-foreground">
+                        {proofTypeLabels[proof.type] || proof.type}
+                      </span>
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {proof.date}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}
