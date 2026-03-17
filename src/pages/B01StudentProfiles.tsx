@@ -5,6 +5,8 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import { useStudents, getStudentDisplayName } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
 import { useQuery } from "@tanstack/react-query";
@@ -108,6 +110,12 @@ export default function B01StudentProfiles() {
 
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">Profily žáků</h1>
+          <Button asChild size="sm">
+            <Link to="/create-student-profiles">
+              <Plus className="h-4 w-4 mr-1" />
+              Nový žák
+            </Link>
+          </Button>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mb-4">
