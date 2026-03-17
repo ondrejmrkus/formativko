@@ -20,8 +20,22 @@ export default function C02bCreateEvaluationDraft() {
 
   const state = location.state as any;
 
-  // If no state, redirect back
-  if (!state?.groupId) {
+  const {
+    groupId, evaluationId, studentName, text: initialText, noProofs,
+    subject, period,
+    selectedType, selectedClassId, selectedStudentId,
+    dateFrom, dateTo, preferences, className, totalStudents,
+  } = state || {};
+
+  const [draftText, setDraftText] = useState(initialText || "");
+  const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState("");
+
+  const { data: classStudents = [] } = useClassStudents(selectedClassId || undefined);
+  const remainingStudents = classStudents.filter((s: any) => s.id !== selectedStudentId);
+
+  // If no state, show fallback
+  if (!groupId) {
     return (
       <AppLayout>
         <div className="max-w-2xl mx-auto text-center py-12">
@@ -34,22 +48,7 @@ export default function C02bCreateEvaluationDraft() {
     );
   }
 
-  const {
-    groupId, evaluationId, studentName, text: initialText, noProofs,
-    subject, period,
-    selectedType, selectedClassId, selectedStudentId,
-    dateFrom, dateTo, preferences, className, totalStudents,
-  } = state;
-
-  const [draftText, setDraftText] = useState(initialText || "");
-  const [generating, setGenerating] = useState(false);
-  const [progress, setProgress] = useState("");
-
-  const { data: classStudents = [] } = useClassStudents(selectedClassId || undefined);
-  const remainingStudents = classStudents.filter((s: any) => s.id !== selectedStudentId);
-
   const handleBack = () => {
-    // Navigate back to C02a with all params restored
     navigate("/evaluations/create", {
       state: {
         selectedType,
@@ -64,7 +63,6 @@ export default function C02bCreateEvaluationDraft() {
 
   const handleContinueForAll = async () => {
     if (remainingStudents.length === 0) {
-      // Save current draft text if edited
       if (draftText !== initialText) {
         await updateEval.mutateAsync({ id: evaluationId, text: draftText });
       }
@@ -74,12 +72,10 @@ export default function C02bCreateEvaluationDraft() {
 
     setGenerating(true);
     try {
-      // Save the current draft if edited
       if (draftText !== initialText) {
         await updateEval.mutateAsync({ id: evaluationId, text: draftText });
       }
 
-      // Generate for remaining students
       for (let i = 0; i < remainingStudents.length; i++) {
         const student = remainingStudents[i] as any;
         setProgress(`Generuji hodnocení pro ${getStudentDisplayName(student)} (${i + 1}/${remainingStudents.length})…`);
