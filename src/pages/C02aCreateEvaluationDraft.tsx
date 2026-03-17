@@ -81,7 +81,7 @@ export default function C02aCreateEvaluationDraft() {
       const noProofs = data?.noProofs === true;
       const text = noProofs ? "" : (data?.text || "");
       const period = `${dateFrom} – ${dateTo}`;
-      const status = noProofs ? "Nedostatek důkazů" : "waiting";
+      const status = noProofs ? "insufficient" : "waiting";
 
       const evaluation = await createEval.mutateAsync({
         studentId: student.id,

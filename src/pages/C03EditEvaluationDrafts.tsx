@@ -13,9 +13,9 @@ import { useToast } from "@/hooks/use-toast";
 type DraftStatus = "waiting" | "approved" | "insufficient";
 
 const statusConfig: Record<DraftStatus, { label: string; className: string }> = {
-  waiting: { label: "Čeká na kontrolu", className: "bg-destructive/10 text-destructive border-destructive/30" },
+  waiting: { label: "Čeká na kontrolu", className: "bg-yellow-100 text-yellow-700 border-yellow-300" },
   approved: { label: "Schváleno", className: "bg-green-100 text-green-700 border-green-300" },
-  insufficient: { label: "Nedostatek důkazů", className: "bg-yellow-100 text-yellow-700 border-yellow-300" },
+  insufficient: { label: "Nedostatek dat", className: "bg-destructive/10 text-destructive border-destructive/30" },
 };
 
 export default function C03EditEvaluationDrafts() {
