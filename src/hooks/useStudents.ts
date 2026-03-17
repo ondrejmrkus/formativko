@@ -56,6 +56,44 @@ export function useCreateStudents() {
   });
 }
 
+export function useUpdateStudent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, first_name, last_name }: { id: string; first_name: string; last_name: string }) => {
+      const { error } = await supabase
+        .from("students")
+        .update({ first_name, last_name })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+    },
+  });
+}
+
+export function useDeleteStudent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Delete related records first
+      const { error: psErr } = await supabase.from("proof_students").delete().eq("student_id", id);
+      if (psErr) throw psErr;
+      const { error: csErr } = await supabase.from("class_students").delete().eq("student_id", id);
+      if (csErr) throw csErr;
+      const { error: evErr } = await supabase.from("evaluations").delete().eq("student_id", id);
+      if (evErr) throw evErr;
+      const { error } = await supabase.from("students").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: ["class_students"] });
+      queryClient.invalidateQueries({ queryKey: ["all_class_students"] });
+    },
+  });
+}
+
 export function getStudentDisplayName(s: { first_name: string; last_name: string }) {
   return `${s.first_name} ${s.last_name}`;
 }

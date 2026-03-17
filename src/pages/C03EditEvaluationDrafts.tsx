@@ -6,25 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { useEvaluationsByGroup, useEvaluationGroups } from "@/hooks/useEvaluations";
+import { useEvaluationsByGroup, useEvaluationGroups, useUpdateEvaluation } from "@/hooks/useEvaluations";
 import { useStudents, getStudentDisplayName } from "@/hooks/useStudents";
 import { useToast } from "@/hooks/use-toast";
 
 type DraftStatus = "waiting" | "approved" | "insufficient";
 
 const statusConfig: Record<DraftStatus, { label: string; className: string }> = {
-  waiting: {
-    label: "Čeká na kontrolu",
-    className: "bg-destructive/10 text-destructive border-destructive/30",
-  },
-  approved: {
-    label: "Schváleno",
-    className: "bg-green-100 text-green-700 border-green-300",
-  },
-  insufficient: {
-    label: "Nedostatek důkazů",
-    className: "bg-yellow-100 text-yellow-700 border-yellow-300",
-  },
+  waiting: { label: "Čeká na kontrolu", className: "bg-destructive/10 text-destructive border-destructive/30" },
+  approved: { label: "Schváleno", className: "bg-green-100 text-green-700 border-green-300" },
+  insufficient: { label: "Nedostatek důkazů", className: "bg-yellow-100 text-yellow-700 border-yellow-300" },
 };
 
 export default function C03EditEvaluationDrafts() {
@@ -33,13 +24,13 @@ export default function C03EditEvaluationDrafts() {
   const { data: groups = [] } = useEvaluationGroups();
   const { data: evaluations = [], isLoading } = useEvaluationsByGroup(id);
   const { data: allStudents = [] } = useStudents();
+  const updateEval = useUpdateEvaluation();
 
   const group = groups.find((g) => g.id === id);
   const [selectedEvalId, setSelectedEvalId] = useState<string | null>(null);
   const [localTexts, setLocalTexts] = useState<Record<string, string>>({});
   const [localStatuses, setLocalStatuses] = useState<Record<string, DraftStatus>>({});
 
-  // Select first evaluation when loaded
   const activeEvalId = selectedEvalId || evaluations[0]?.id;
   const activeEval = evaluations.find((e) => e.id === activeEvalId);
 
@@ -60,11 +51,26 @@ export default function C03EditEvaluationDrafts() {
     return "waiting";
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!activeEvalId) return;
     setLocalStatuses((prev) => ({ ...prev, [activeEvalId]: "approved" }));
-    const student = activeEval ? getStudent(activeEval.student_id) : null;
-    toast({ title: `Hodnocení pro ${student ? getStudentDisplayName(student) : "žáka"} schváleno` });
+    try {
+      await updateEval.mutateAsync({ id: activeEvalId, text: getText(activeEvalId), status: "approved" });
+      const student = activeEval ? getStudent(activeEval.student_id) : null;
+      toast({ title: `Hodnocení pro ${student ? getStudentDisplayName(student) : "žáka"} schváleno` });
+    } catch {
+      toast({ title: "Chyba při schvalování", variant: "destructive" });
+    }
+  };
+
+  const handleSaveText = async () => {
+    if (!activeEvalId) return;
+    try {
+      await updateEval.mutateAsync({ id: activeEvalId, text: getText(activeEvalId) });
+      toast({ title: "Text uložen" });
+    } catch {
+      toast({ title: "Chyba při ukládání", variant: "destructive" });
+    }
   };
 
   const handleCopy = () => {
@@ -74,8 +80,13 @@ export default function C03EditEvaluationDrafts() {
   };
 
   const handleExportAll = () => {
-    const approved = evaluations.filter((e) => getStatus(e.id) === "approved").length;
-    toast({ title: "Export dokončen", description: `${approved} schválených hodnocení exportováno` });
+    const allText = evaluations.map((ev) => {
+      const student = getStudent(ev.student_id);
+      const name = student ? getStudentDisplayName(student) : ev.student_id;
+      return `${name}\n${getText(ev.id)}\n`;
+    }).join("\n---\n\n");
+    navigator.clipboard.writeText(allText);
+    toast({ title: "Všechna hodnocení zkopírována do schránky" });
   };
 
   return (
@@ -112,9 +123,7 @@ export default function C03EditEvaluationDrafts() {
                       key={ev.id}
                       onClick={() => setSelectedEvalId(ev.id)}
                       className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
-                        activeEvalId === ev.id
-                          ? "bg-primary/10 text-primary font-medium"
-                          : "hover:bg-accent text-foreground"
+                        activeEvalId === ev.id ? "bg-primary/10 text-primary font-medium" : "hover:bg-accent text-foreground"
                       }`}
                     >
                       <span className="truncate">{student ? getStudentDisplayName(student) : ev.student_id}</span>
@@ -139,6 +148,9 @@ export default function C03EditEvaluationDrafts() {
                       {(() => { const s = getStudent(activeEval.student_id); return s ? getStudentDisplayName(s) : activeEval.student_id; })()}
                     </h2>
                     <div className="flex gap-2">
+                      <Button size="sm" variant="outline" onClick={handleSaveText}>
+                        Uložit text
+                      </Button>
                       <Button
                         size="sm"
                         className="gap-1"
@@ -150,7 +162,7 @@ export default function C03EditEvaluationDrafts() {
                       </Button>
                       <Button size="sm" variant="outline" className="gap-1" onClick={handleCopy}>
                         <Copy className="h-3.5 w-3.5" />
-                        Zkopírovat text
+                        Kopírovat
                       </Button>
                     </div>
                   </div>

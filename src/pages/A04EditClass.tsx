@@ -4,15 +4,17 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useStudents, getStudentDisplayName } from "@/hooks/useStudents";
-import { useClasses, useClassStudents, useUpdateClass } from "@/hooks/useClasses";
+import { useClasses, useClassStudents, useUpdateClass, useDeleteClass } from "@/hooks/useClasses";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+  Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function A04EditClass() {
   const { classId } = useParams<{ classId: string }>();
@@ -22,6 +24,7 @@ export default function A04EditClass() {
   const { data: classes = [] } = useClasses();
   const { data: classStudents = [] } = useClassStudents(classId);
   const updateClass = useUpdateClass();
+  const deleteClass = useDeleteClass();
   const [className, setClassName] = useState("");
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -67,6 +70,17 @@ export default function A04EditClass() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!classId) return;
+    try {
+      await deleteClass.mutateAsync(classId);
+      toast({ title: "Třída smazána" });
+      navigate("/student-profiles");
+    } catch {
+      toast({ title: "Chyba při mazání třídy", variant: "destructive" });
+    }
+  };
+
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto">
@@ -78,16 +92,34 @@ export default function A04EditClass() {
           ]}
         />
 
-        <h1 className="text-2xl font-bold mb-6">Upravit třídu</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Upravit třídu</h1>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button className="p-2 hover:bg-destructive/10 rounded-lg" title="Smazat třídu">
+                <Trash2 className="h-5 w-5 text-destructive" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Smazat třídu?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tím smažete třídu „{currentClass?.name}". Žáci nebudou smazáni, jen odpojeni od třídy.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Zrušit</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Smazat
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
 
         <div className="mb-6">
           <label className="text-sm font-medium text-muted-foreground block mb-2">Název třídy</label>
-          <Input
-            placeholder="např. 6.A"
-            value={className}
-            onChange={(e) => setClassName(e.target.value)}
-            className="bg-card max-w-xs"
-          />
+          <Input placeholder="např. 6.A" value={className} onChange={(e) => setClassName(e.target.value)} className="bg-card max-w-xs" />
         </div>
 
         <div className="mb-4">
@@ -99,37 +131,24 @@ export default function A04EditClass() {
               return (
                 <span key={sid} className="flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
                   {getStudentDisplayName(s)}
-                  <button onClick={() => removeStudent(sid)} className="ml-1 hover:text-destructive">
-                    <X className="h-3 w-3" />
-                  </button>
+                  <button onClick={() => removeStudent(sid)} className="ml-1 hover:text-destructive"><X className="h-3 w-3" /></button>
                 </span>
               );
             })}
             <Popover open={searchOpen} onOpenChange={(o) => { setSearchOpen(o); if (!o) setSearch(""); }}>
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-border text-sm text-muted-foreground hover:bg-accent transition-colors">
-                  <Plus className="h-3 w-3" />
-                  Přidat žáka
+                  <Plus className="h-3 w-3" /> Přidat žáka
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-2" align="start">
-                <Input
-                  placeholder="Hledat žáka..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="mb-2 h-8 text-sm"
-                  autoFocus
-                />
+                <Input placeholder="Hledat žáka..." value={search} onChange={(e) => setSearch(e.target.value)} className="mb-2 h-8 text-sm" autoFocus />
                 <div className="max-h-48 overflow-auto space-y-0.5">
                   {availableStudents.length === 0 ? (
                     <p className="text-sm text-muted-foreground px-2 py-1">Žádní žáci</p>
                   ) : (
                     availableStudents.slice(0, 20).map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => addStudent(s.id)}
-                        className="w-full text-left px-2 py-1.5 rounded text-sm hover:bg-accent text-foreground transition-colors"
-                      >
+                      <button key={s.id} onClick={() => addStudent(s.id)} className="w-full text-left px-2 py-1.5 rounded text-sm hover:bg-accent text-foreground transition-colors">
                         {getStudentDisplayName(s)}
                       </button>
                     ))

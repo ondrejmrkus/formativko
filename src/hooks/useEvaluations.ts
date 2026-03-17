@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -52,5 +52,71 @@ export function useEvaluationsByGroup(groupId: string | undefined) {
       return data as Evaluation[];
     },
     enabled: !!user && !!groupId,
+  });
+}
+
+export function useCreateEvaluationGroup() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ name, type, classId, dateFrom, dateTo }: {
+      name: string; type: string; classId: string; dateFrom: string; dateTo: string;
+    }) => {
+      const { data, error } = await supabase
+        .from("evaluation_groups")
+        .insert({
+          name, type, class_id: classId,
+          date_from: dateFrom, date_to: dateTo,
+          teacher_id: user!.id,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["evaluation_groups"] });
+    },
+  });
+}
+
+export function useCreateEvaluation() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ studentId, groupId, subject, period, text }: {
+      studentId: string; groupId: string; subject: string; period: string; text: string;
+    }) => {
+      const { data, error } = await supabase
+        .from("evaluations")
+        .insert({
+          student_id: studentId, group_id: groupId,
+          subject, period, text,
+          teacher_id: user!.id, status: "waiting",
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["evaluations"] });
+    },
+  });
+}
+
+export function useUpdateEvaluation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, text, status }: { id: string; text?: string; status?: string }) => {
+      const updates: any = {};
+      if (text !== undefined) updates.text = text;
+      if (status !== undefined) updates.status = status;
+      const { error } = await supabase.from("evaluations").update(updates).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["evaluations"] });
+    },
   });
 }
