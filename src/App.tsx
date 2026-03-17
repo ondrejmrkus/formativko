@@ -51,6 +51,7 @@ const App = () => (
             <Route path="/evaluations/create/preview" element={<ProtectedRoute><C02bCreateEvaluationDraft /></ProtectedRoute>} />
             <Route path="/evaluations/edit/:id" element={<ProtectedRoute><C03EditEvaluationDrafts /></ProtectedRoute>} />
             <Route path="/lessons" element={<ProtectedRoute><D01Lessons /></ProtectedRoute>} />
+            <Route path="/classes" element={<ProtectedRoute><F01Classes /></ProtectedRoute>} />
             <Route path="/capture" element={<ProtectedRoute><E01CaptureToolChooseClass /></ProtectedRoute>} />
             <Route path="/capture/:classId" element={<ProtectedRoute><E02CaptureToolAddProofs /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />

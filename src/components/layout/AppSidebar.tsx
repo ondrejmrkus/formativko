@@ -1,4 +1,4 @@
-import { Home, Users, FileText, BookOpen, LogOut } from "lucide-react";
+import { Home, Users, FileText, BookOpen, LogOut, GraduationCap } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
