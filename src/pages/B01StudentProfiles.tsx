@@ -5,11 +5,43 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { students, classes, getClassesForStudent, getProofsForStudent, getStudentDisplayName } from "@/data/mockData";
+import { useStudents, getStudentDisplayName } from "@/hooks/useStudents";
+import { useClasses } from "@/hooks/useClasses";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function B01StudentProfiles() {
+  const { user } = useAuth();
+  const { data: students = [], isLoading: studentsLoading } = useStudents();
+  const { data: classes = [] } = useClasses();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
+
+  // Get all class_students mappings and proof counts in bulk
+  const { data: classStudentMap = [] } = useQuery({
+    queryKey: ["all_class_students", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("class_students")
+        .select("student_id, class_id");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: proofCounts = [] } = useQuery({
+    queryKey: ["all_proof_counts", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("proof_students")
+        .select("student_id");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
 
   const toggleFilter = (group: string, option: string) => {
     setFilters((prev) => {
@@ -25,15 +57,15 @@ export default function B01StudentProfiles() {
 
   const filteredStudents = useMemo(() => {
     let result = [...students].sort((a, b) =>
-      a.lastName.localeCompare(b.lastName, "cs")
+      a.last_name.localeCompare(b.last_name, "cs")
     );
 
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
         (s) =>
-          s.firstName.toLowerCase().includes(q) ||
-          s.lastName.toLowerCase().includes(q)
+          s.first_name.toLowerCase().includes(q) ||
+          s.last_name.toLowerCase().includes(q)
       );
     }
 
@@ -42,13 +74,27 @@ export default function B01StudentProfiles() {
       const classIds = classes
         .filter((c) => selectedClasses.includes(c.name))
         .map((c) => c.id);
-      result = result.filter((s) =>
-        s.classIds.some((cid) => classIds.includes(cid))
+      const studentIdsInClasses = new Set(
+        classStudentMap
+          .filter((cs) => classIds.includes(cs.class_id))
+          .map((cs) => cs.student_id)
       );
+      result = result.filter((s) => studentIdsInClasses.has(s.id));
     }
 
     return result;
-  }, [search, filters]);
+  }, [students, search, filters, classes, classStudentMap]);
+
+  const getStudentClassNames = (studentId: string) => {
+    const cids = classStudentMap
+      .filter((cs) => cs.student_id === studentId)
+      .map((cs) => cs.class_id);
+    return classes.filter((c) => cids.includes(c.id));
+  };
+
+  const getProofCount = (studentId: string) => {
+    return proofCounts.filter((p) => p.student_id === studentId).length;
+  };
 
   return (
     <AppLayout>
@@ -80,15 +126,19 @@ export default function B01StudentProfiles() {
           <span className="w-20 text-center">Důkazy</span>
         </div>
 
-        {filteredStudents.length === 0 ? (
+        {studentsLoading ? (
+          <div className="text-center py-12 text-muted-foreground">Načítání…</div>
+        ) : filteredStudents.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            Žádní žáci neodpovídají vyhledávání.
+            {students.length === 0
+              ? "Zatím nemáte žádné žáky."
+              : "Žádní žáci neodpovídají vyhledávání."}
           </div>
         ) : (
           <div className="divide-y divide-border">
             {filteredStudents.map((student) => {
-              const studentClasses = getClassesForStudent(student.id);
-              const proofCount = getProofsForStudent(student.id).length;
+              const studentClasses = getStudentClassNames(student.id);
+              const proofCount = getProofCount(student.id);
               return (
                 <Link
                   key={student.id}

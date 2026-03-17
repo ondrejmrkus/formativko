@@ -14,11 +14,8 @@ import {
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Mic, Camera, Upload, FileText, Plus } from "lucide-react";
-import {
-  getStudentById,
-  getStudentDisplayName,
-  students as allStudents,
-} from "@/data/mockData";
+import { useStudent, useStudents, getStudentDisplayName } from "@/hooks/useStudents";
+import { useCreateProof } from "@/hooks/useProofs";
 import { useToast } from "@/hooks/use-toast";
 
 type ProofType = "text" | "voice" | "camera" | "file";
@@ -34,23 +31,37 @@ export default function B04AddProofOfLearning() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const student = getStudentById(id || "s1")!;
+  const { data: student, isLoading } = useStudent(id);
+  const { data: allStudents = [] } = useStudents();
+  const createProof = useCreateProof();
   const [selectedType, setSelectedType] = useState<ProofType>("text");
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [date, setDate] = useState<Date>(new Date());
-  const [attachedStudentIds, setAttachedStudentIds] = useState<string[]>([student.id]);
+  const [attachedStudentIds, setAttachedStudentIds] = useState<string[]>(id ? [id] : []);
   const [studentSearchOpen, setStudentSearchOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) {
       toast({ title: "Zadejte název důkazu", variant: "destructive" });
       return;
     }
-    toast({ title: "Důkaz o učení uložen" });
-    navigate(`/student-profiles/${student.id}`);
+    try {
+      await createProof.mutateAsync({
+        title: title.trim(),
+        type: selectedType,
+        note,
+        date: date.toISOString().split("T")[0],
+        lessonId: selectedLessonId,
+        studentIds: attachedStudentIds,
+      });
+      toast({ title: "Důkaz o učení uložen" });
+      navigate(`/student-profiles/${id}`);
+    } catch {
+      toast({ title: "Chyba při ukládání", variant: "destructive" });
+    }
   };
 
   const removeStudent = (sid: string) => {
@@ -71,8 +82,12 @@ export default function B04AddProofOfLearning() {
     .filter(
       (s) =>
         !studentSearch ||
-        `${s.firstName} ${s.lastName}`.toLowerCase().includes(studentSearch.toLowerCase())
+        `${s.first_name} ${s.last_name}`.toLowerCase().includes(studentSearch.toLowerCase())
     );
+
+  if (isLoading || !student) {
+    return <AppLayout><div className="text-center py-12 text-muted-foreground">Načítání…</div></AppLayout>;
+  }
 
   return (
     <AppLayout>
@@ -88,7 +103,6 @@ export default function B04AddProofOfLearning() {
 
         <h1 className="text-2xl font-bold mb-6">Přidat důkaz o učení</h1>
 
-        {/* Type selector */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
           {proofTypes.map((pt) => (
             <button
@@ -107,7 +121,6 @@ export default function B04AddProofOfLearning() {
         </div>
 
         <div className="space-y-4">
-          {/* Type-specific content */}
           {selectedType === "text" && (
             <div>
               <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámka</label>
@@ -147,7 +160,6 @@ export default function B04AddProofOfLearning() {
             </div>
           )}
 
-          {/* Common fields */}
           <div>
             <label className="text-sm font-medium text-muted-foreground block mb-2">Název důkazu</label>
             <Input
@@ -167,7 +179,7 @@ export default function B04AddProofOfLearning() {
             <label className="text-sm font-medium text-muted-foreground block mb-2">Žáci</label>
             <div className="flex flex-wrap gap-2">
               {attachedStudentIds.map((sid) => {
-                const s = getStudentById(sid);
+                const s = allStudents.find((st) => st.id === sid);
                 if (!s) return null;
                 return (
                   <StudentChip
@@ -222,12 +234,12 @@ export default function B04AddProofOfLearning() {
           {selectedType !== "text" && (
             <div>
               <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámka</label>
-              <Textarea className="min-h-[80px] bg-card" placeholder="Volitelná poznámka..." />
+              <Textarea className="min-h-[80px] bg-card" placeholder="Volitelná poznámka..." value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
           )}
 
-          <Button className="w-full" size="lg" onClick={handleSave}>
-            Uložit
+          <Button className="w-full" size="lg" onClick={handleSave} disabled={createProof.isPending}>
+            {createProof.isPending ? "Ukládání…" : "Uložit"}
           </Button>
         </div>
       </div>

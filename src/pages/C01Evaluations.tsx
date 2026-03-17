@@ -6,9 +6,12 @@ import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
-import { evaluationGroups, classes } from "@/data/mockData";
+import { useEvaluationGroups } from "@/hooks/useEvaluations";
+import { useClasses } from "@/hooks/useClasses";
 
 export default function C01Evaluations() {
+  const { data: evaluationGroups = [], isLoading } = useEvaluationGroups();
+  const { data: classes = [] } = useClasses();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
 
@@ -37,11 +40,11 @@ export default function C01Evaluations() {
       const classIds = classes
         .filter((c) => selectedClasses.includes(c.name))
         .map((c) => c.id);
-      result = result.filter((g) => classIds.includes(g.classId));
+      result = result.filter((g) => g.class_id && classIds.includes(g.class_id));
     }
 
     return result;
-  }, [search, filters]);
+  }, [evaluationGroups, search, filters, classes]);
 
   return (
     <AppLayout>
@@ -81,29 +84,34 @@ export default function C01Evaluations() {
 
         <div className="hidden sm:grid grid-cols-[1fr_auto] gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
           <span>Název hodnocení</span>
-          <span className="w-24 text-center">Počet žáků</span>
+          <span className="w-24 text-center">Třída</span>
         </div>
 
-        {filteredGroups.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-12 text-muted-foreground">Načítání…</div>
+        ) : filteredGroups.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            Žádná hodnocení neodpovídají vyhledávání.
+            {evaluationGroups.length === 0 ? "Zatím nemáte žádná hodnocení." : "Žádná hodnocení neodpovídají vyhledávání."}
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {filteredGroups.map((group) => (
-              <Link
-                key={group.id}
-                to={`/evaluations/edit/${group.id}`}
-                className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
-              >
-                <span className="font-medium text-foreground">
-                  {group.name}
-                </span>
-                <span className="w-24 text-center text-sm text-muted-foreground">
-                  {group.studentCount}
-                </span>
-              </Link>
-            ))}
+            {filteredGroups.map((group) => {
+              const cls = classes.find((c) => c.id === group.class_id);
+              return (
+                <Link
+                  key={group.id}
+                  to={`/evaluations/edit/${group.id}`}
+                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
+                >
+                  <span className="font-medium text-foreground">
+                    {group.name}
+                  </span>
+                  <span className="w-24 text-center text-sm text-muted-foreground">
+                    {cls?.name || "—"}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

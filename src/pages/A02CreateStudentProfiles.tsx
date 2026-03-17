@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useCreateStudents } from "@/hooks/useStudents";
 
 export default function A02CreateStudentProfiles() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const createStudents = useCreateStudents();
   const [rows, setRows] = useState([
     { first: "", last: "" },
     { first: "", last: "" },
@@ -27,14 +29,21 @@ export default function A02CreateStudentProfiles() {
     setRows((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const filled = rows.filter((r) => r.first.trim() && r.last.trim());
     if (filled.length === 0) {
       toast({ title: "Vyplňte alespoň jednoho žáka", variant: "destructive" });
       return;
     }
-    toast({ title: `${filled.length} ${filled.length === 1 ? "profil vytvořen" : "profilů vytvořeno"}` });
-    navigate("/student-profiles");
+    try {
+      await createStudents.mutateAsync(
+        filled.map((r) => ({ first_name: r.first.trim(), last_name: r.last.trim() }))
+      );
+      toast({ title: `${filled.length} ${filled.length === 1 ? "profil vytvořen" : "profilů vytvořeno"}` });
+      navigate("/student-profiles");
+    } catch {
+      toast({ title: "Chyba při vytváření profilů", variant: "destructive" });
+    }
   };
 
   return (
@@ -84,8 +93,8 @@ export default function A02CreateStudentProfiles() {
           <p className="text-xs text-muted-foreground">Přetáhněte sem soubor CSV nebo klikněte pro výběr</p>
         </div>
 
-        <Button className="w-full" size="lg" onClick={handleSave}>
-          Uložit profily
+        <Button className="w-full" size="lg" onClick={handleSave} disabled={createStudents.isPending}>
+          {createStudents.isPending ? "Ukládání…" : "Uložit profily"}
         </Button>
       </div>
     </AppLayout>

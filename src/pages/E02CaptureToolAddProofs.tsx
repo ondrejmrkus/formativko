@@ -5,20 +5,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import {
-  getClassById,
-  getStudentsByClass,
-  getStudentShortName,
-  lessons,
-} from "@/data/mockData";
+import { useClasses, useClassStudents } from "@/hooks/useClasses";
+import { useLessons } from "@/hooks/useLessons";
+import { getStudentShortName } from "@/hooks/useStudents";
+import { useCreateProof } from "@/hooks/useProofs";
 import E03CaptureToolSettings from "./E03CaptureToolSettings";
 
 type CaptureMode = null | "note" | "photo";
 
 export default function E02CaptureToolAddProofs() {
   const { classId } = useParams<{ classId: string }>();
-  const cls = getClassById(classId || "c1")!;
-  const students = getStudentsByClass(cls.id);
+  const { data: classes = [] } = useClasses();
+  const { data: students = [] } = useClassStudents(classId);
+  const { data: allLessons = [] } = useLessons();
+  const createProof = useCreateProof();
   const { toast } = useToast();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
@@ -28,20 +28,17 @@ export default function E02CaptureToolAddProofs() {
   const [lessonOpen, setLessonOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
 
-  const classLessons = lessons.filter(
-    (l) => l.classId === cls.id && (l.status === "ongoing" || l.status === "prepared")
+  const cls = classes.find((c) => c.id === classId);
+  const classLessons = allLessons.filter(
+    (l) => l.class_id === classId && (l.status === "ongoing" || l.status === "prepared")
   );
 
-  // Adaptive grid: fill screen as much as possible
   const gridConfig = useMemo(() => {
     const count = students.length;
-    if (count <= 6) return { cols: 2, rows: 3 };
-    if (count <= 9) return { cols: 3, rows: 3 };
-    if (count <= 12) return { cols: 3, rows: 4 };
-    if (count <= 16) return { cols: 4, rows: 4 };
-    if (count <= 20) return { cols: 4, rows: 5 };
-    if (count <= 24) return { cols: 4, rows: 6 };
-    return { cols: 5, rows: Math.ceil(count / 5) };
+    if (count <= 6) return { cols: 2 };
+    if (count <= 9) return { cols: 3 };
+    if (count <= 16) return { cols: 4 };
+    return { cols: 5 };
   }, [students.length]);
 
   const toggleStudent = (id: string) => {
@@ -58,30 +55,38 @@ export default function E02CaptureToolAddProofs() {
     setCaptureMode(mode);
   };
 
-  const handleSaveNote = () => {
+  const handleSaveNote = async () => {
     if (!noteText.trim()) {
       toast({ title: "Napište poznámku", variant: "destructive" });
       return;
     }
-    setProofCounts((prev) => {
-      const updated = { ...prev };
-      selectedStudents.forEach((id) => {
-        updated[id] = (updated[id] || 0) + 1;
+    try {
+      await createProof.mutateAsync({
+        title: noteText.substring(0, 60),
+        type: "text",
+        note: noteText,
+        date: new Date().toISOString().split("T")[0],
+        lessonId: selectedLesson,
+        studentIds: selectedStudents,
       });
-      return updated;
-    });
-    toast({ title: `Poznámka uložena pro ${selectedStudents.length} žáků` });
-    setNoteText("");
-    setCaptureMode(null);
-    setSelectedStudents([]);
+      setProofCounts((prev) => {
+        const updated = { ...prev };
+        selectedStudents.forEach((id) => { updated[id] = (updated[id] || 0) + 1; });
+        return updated;
+      });
+      toast({ title: `Poznámka uložena pro ${selectedStudents.length} žáků` });
+      setNoteText("");
+      setCaptureMode(null);
+      setSelectedStudents([]);
+    } catch {
+      toast({ title: "Chyba při ukládání", variant: "destructive" });
+    }
   };
 
   const handleSavePhoto = () => {
     setProofCounts((prev) => {
       const updated = { ...prev };
-      selectedStudents.forEach((id) => {
-        updated[id] = (updated[id] || 0) + 1;
-      });
+      selectedStudents.forEach((id) => { updated[id] = (updated[id] || 0) + 1; });
       return updated;
     });
     toast({ title: `Foto uloženo pro ${selectedStudents.length} žáků` });
@@ -93,12 +98,11 @@ export default function E02CaptureToolAddProofs() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top bar */}
       <header className="flex items-center justify-between p-3 border-b border-border bg-card">
         <div className="flex items-center gap-2">
           <Link to="/capture">
             <Badge variant="secondary" className="text-sm py-1 px-3 cursor-pointer">
-              {cls.name}
+              {cls?.name || "Třída"}
             </Badge>
           </Link>
           <Badge
@@ -109,15 +113,11 @@ export default function E02CaptureToolAddProofs() {
             {selectedLessonObj ? selectedLessonObj.title : "Přiřadit lekci"}
           </Badge>
         </div>
-        <button
-          onClick={() => setSettingsOpen(true)}
-          className="p-2 hover:bg-accent rounded-lg"
-        >
+        <button onClick={() => setSettingsOpen(true)} className="p-2 hover:bg-accent rounded-lg">
           <Settings className="h-5 w-5 text-muted-foreground" />
         </button>
       </header>
 
-      {/* Lesson picker dropdown */}
       {lessonOpen && (
         <div className="border-b border-border bg-card p-3 space-y-1">
           <p className="text-xs font-medium text-muted-foreground mb-2">Vyberte lekci:</p>
@@ -145,7 +145,6 @@ export default function E02CaptureToolAddProofs() {
         </div>
       )}
 
-      {/* Student grid — fills available space */}
       <div
         className="flex-1 p-3 overflow-auto"
         style={{
@@ -156,7 +155,7 @@ export default function E02CaptureToolAddProofs() {
           alignContent: "stretch",
         }}
       >
-        {students.map((student) => {
+        {students.map((student: any) => {
           const isSelected = selectedStudents.includes(student.id);
           const count = proofCounts[student.id] || 0;
           return (
@@ -175,10 +174,7 @@ export default function E02CaptureToolAddProofs() {
               {count > 0 && (
                 <div className="flex gap-1 mt-1.5">
                   {Array.from({ length: Math.min(count, 5) }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-2 h-2 rounded-full bg-primary"
-                    />
+                    <div key={i} className="w-2 h-2 rounded-full bg-primary" />
                   ))}
                   {count > 5 && (
                     <span className="text-[10px] text-muted-foreground">+{count - 5}</span>
@@ -190,7 +186,6 @@ export default function E02CaptureToolAddProofs() {
         })}
       </div>
 
-      {/* Capture panel (note or photo) */}
       {captureMode === "note" && (
         <div className="border-t border-border bg-card p-3 space-y-2">
           <div className="flex items-center justify-between">
@@ -208,9 +203,9 @@ export default function E02CaptureToolAddProofs() {
             onChange={(e) => setNoteText(e.target.value)}
             autoFocus
           />
-          <Button className="w-full gap-1" onClick={handleSaveNote}>
+          <Button className="w-full gap-1" onClick={handleSaveNote} disabled={createProof.isPending}>
             <Check className="h-4 w-4" />
-            Uložit poznámku
+            {createProof.isPending ? "Ukládání…" : "Uložit poznámku"}
           </Button>
         </div>
       )}
@@ -236,7 +231,6 @@ export default function E02CaptureToolAddProofs() {
         </div>
       )}
 
-      {/* Bottom toolbar */}
       {!captureMode && (
         <div className="border-t border-border bg-card p-3 flex items-center justify-center gap-6">
           <button
@@ -260,14 +254,12 @@ export default function E02CaptureToolAddProofs() {
         </div>
       )}
 
-      {/* Selection indicator */}
       {selectedStudents.length > 0 && !captureMode && (
         <div className="bg-primary text-primary-foreground text-center py-1.5 text-sm font-medium">
           {selectedStudents.length} žáků vybráno
         </div>
       )}
 
-      {/* Settings modal */}
       <E03CaptureToolSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );

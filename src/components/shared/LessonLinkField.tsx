@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Check, X } from "lucide-react";
-import { lessons } from "@/data/mockData";
+import { useLessons } from "@/hooks/useLessons";
 import {
   Popover,
   PopoverContent,
@@ -14,6 +14,7 @@ interface LessonLinkFieldProps {
 }
 
 export function LessonLinkField({ lessonId, onLessonChange }: LessonLinkFieldProps) {
+  const { data: lessons = [] } = useLessons();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const selectedLesson = lessons.find((l) => l.id === lessonId);

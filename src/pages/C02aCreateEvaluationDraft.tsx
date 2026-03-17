@@ -3,11 +3,10 @@ import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Upload } from "lucide-react";
 import { useState } from "react";
-import { classes } from "@/data/mockData";
+import { useClasses } from "@/hooks/useClasses";
 
 const evalTypes = [
   { id: "prubezna", label: "Průběžná zpětná vazba" },
@@ -17,6 +16,7 @@ const evalTypes = [
 ];
 
 export default function C02aCreateEvaluationDraft() {
+  const { data: classes = [] } = useClasses();
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
 
@@ -34,7 +34,6 @@ export default function C02aCreateEvaluationDraft() {
         <h1 className="text-2xl font-bold mb-6">Tvorba hodnocení</h1>
 
         <div className="space-y-6">
-          {/* Evaluation type */}
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
               Typ hodnocení
@@ -56,7 +55,6 @@ export default function C02aCreateEvaluationDraft() {
             </div>
           </div>
 
-          {/* Period - shown after type selected */}
           {selectedType && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
@@ -75,7 +73,6 @@ export default function C02aCreateEvaluationDraft() {
             </div>
           )}
 
-          {/* Class selector */}
           {selectedType && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
@@ -99,7 +96,6 @@ export default function C02aCreateEvaluationDraft() {
             </div>
           )}
 
-          {/* Preferences */}
           {selectedClassId && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
@@ -116,7 +112,6 @@ export default function C02aCreateEvaluationDraft() {
             </div>
           )}
 
-          {/* Template student */}
           {selectedClassId && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
@@ -129,7 +124,6 @@ export default function C02aCreateEvaluationDraft() {
             </div>
           )}
 
-          {/* Submit */}
           {selectedClassId && (
             <Button asChild className="w-full" size="lg">
               <Link to="/evaluations/create/preview">
