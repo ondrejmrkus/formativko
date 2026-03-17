@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useClasses, useClassStudents } from "@/hooks/useClasses";
 import { useCreateEvaluationGroup, useCreateEvaluation } from "@/hooks/useEvaluations";
 import { getStudentDisplayName } from "@/hooks/useStudents";
@@ -21,26 +21,30 @@ const evalTypes = [
 
 export default function C02aCreateEvaluationDraft() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { data: classes = [] } = useClasses();
   const createGroup = useCreateEvaluationGroup();
   const createEval = useCreateEvaluation();
 
-  const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [dateFrom, setDateFrom] = useState("2026-01-01");
-  const [dateTo, setDateTo] = useState("2026-03-17");
-  const [preferences, setPreferences] = useState("");
+  // Restore state if coming back from C02b
+  const restored = location.state as any;
+
+  const [selectedType, setSelectedType] = useState<string | null>(restored?.selectedType || null);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(restored?.selectedClassId || null);
+  const [dateFrom, setDateFrom] = useState(restored?.dateFrom || "2026-01-01");
+  const [dateTo, setDateTo] = useState(restored?.dateTo || "2026-03-17");
+  const [preferences, setPreferences] = useState(restored?.preferences || "");
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(restored?.selectedStudentId || null);
   const [generating, setGenerating] = useState(false);
-  const [progress, setProgress] = useState("");
 
   const { data: classStudents = [] } = useClassStudents(selectedClassId || undefined);
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
 
   const handleGenerate = async () => {
-    if (!selectedType || !selectedClassId || classStudents.length === 0) {
-      toast({ title: "Vyberte typ, třídu a ujistěte se, že třída má žáky.", variant: "destructive" });
+    if (!selectedType || !selectedClassId || !selectedStudentId) {
+      toast({ title: "Vyberte typ, třídu a žáka.", variant: "destructive" });
       return;
     }
 
@@ -58,55 +62,62 @@ export default function C02aCreateEvaluationDraft() {
         dateTo,
       });
 
-      // Generate evaluations for each student
-      for (let i = 0; i < classStudents.length; i++) {
-        const student = classStudents[i] as any;
-        setProgress(`Generuji hodnocení pro ${getStudentDisplayName(student)} (${i + 1}/${classStudents.length})…`);
+      // Generate evaluation for the selected student
+      const student = classStudents.find((s: any) => s.id === selectedStudentId) as any;
+      if (!student) throw new Error("Student not found");
 
-        try {
-          const { data, error } = await supabase.functions.invoke("generate-evaluation", {
-            body: {
-              studentId: student.id,
-              evalType: selectedType,
-              dateFrom,
-              dateTo,
-              preferences: preferences.trim() || null,
-            },
-          });
+      const { data, error } = await supabase.functions.invoke("generate-evaluation", {
+        body: {
+          studentId: student.id,
+          evalType: selectedType,
+          dateFrom,
+          dateTo,
+          preferences: preferences.trim() || null,
+        },
+      });
 
-          if (error) throw error;
+      if (error) throw error;
 
-          const text = data?.text || "Nepodařilo se vygenerovat hodnocení.";
-          const period = `${dateFrom} – ${dateTo}`;
+      const noProofs = data?.noProofs === true;
+      const text = noProofs ? "" : (data?.text || "");
+      const period = `${dateFrom} – ${dateTo}`;
+      const status = noProofs ? "Nedostatek důkazů" : "waiting";
 
-          await createEval.mutateAsync({
-            studentId: student.id,
-            groupId: group.id,
-            subject: typeName,
-            period,
-            text,
-          });
-        } catch (e: any) {
-          console.error(`Error generating for ${student.id}:`, e);
-          // Still create evaluation with error message
-          await createEval.mutateAsync({
-            studentId: student.id,
-            groupId: group.id,
-            subject: typeName,
-            period: `${dateFrom} – ${dateTo}`,
-            text: `[Chyba při generování: ${e?.message || "neznámá chyba"}]`,
-          });
-        }
-      }
+      const evaluation = await createEval.mutateAsync({
+        studentId: student.id,
+        groupId: group.id,
+        subject: typeName,
+        period,
+        text,
+        status,
+      });
 
-      toast({ title: "Hodnocení vygenerována!", description: `${classStudents.length} konceptů vytvořeno.` });
-      navigate(`/evaluations/edit/${group.id}`);
+      // Navigate to C02b with all context
+      navigate("/evaluations/create/preview", {
+        state: {
+          groupId: group.id,
+          evaluationId: evaluation.id,
+          studentName: getStudentDisplayName(student),
+          text,
+          noProofs,
+          subject: typeName,
+          period,
+          // Params to pass back if teacher wants to retry
+          selectedType,
+          selectedClassId,
+          selectedStudentId: student.id,
+          dateFrom,
+          dateTo,
+          preferences,
+          className: selectedClass?.name,
+          totalStudents: classStudents.length,
+        },
+      });
     } catch (e: any) {
       console.error(e);
       toast({ title: "Chyba při generování", description: e?.message, variant: "destructive" });
     } finally {
       setGenerating(false);
-      setProgress("");
     }
   };
 
@@ -124,6 +135,7 @@ export default function C02aCreateEvaluationDraft() {
         <h1 className="text-2xl font-bold mb-6">Tvorba hodnocení</h1>
 
         <div className="space-y-6">
+          {/* Step 1: Type */}
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
               Typ hodnocení
@@ -145,6 +157,7 @@ export default function C02aCreateEvaluationDraft() {
             </div>
           </div>
 
+          {/* Step 2: Period */}
           {selectedType && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
@@ -163,6 +176,7 @@ export default function C02aCreateEvaluationDraft() {
             </div>
           )}
 
+          {/* Step 3: Class */}
           {selectedType && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
@@ -175,7 +189,10 @@ export default function C02aCreateEvaluationDraft() {
                   classes.map((c) => (
                     <button
                       key={c.id}
-                      onClick={() => setSelectedClassId(c.id)}
+                      onClick={() => {
+                        setSelectedClassId(c.id);
+                        setSelectedStudentId(null);
+                      }}
                       className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
                         selectedClassId === c.id
                           ? "border-primary bg-primary/10 text-primary"
@@ -187,15 +204,35 @@ export default function C02aCreateEvaluationDraft() {
                   ))
                 )}
               </div>
-              {selectedClassId && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  {classStudents.length} žáků ve třídě
-                </p>
-              )}
             </div>
           )}
 
-          {selectedClassId && (
+          {/* Step 4: Student picker */}
+          {selectedClassId && classStudents.length > 0 && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
+                Vyberte žáka pro zkušební koncept
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {classStudents.map((s: any) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedStudentId(s.id)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+                      selectedStudentId === s.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/30"
+                    }`}
+                  >
+                    {getStudentDisplayName(s)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Preferences */}
+          {selectedStudentId && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
                 Preference pro hodnocení (volitelné)
@@ -209,7 +246,8 @@ export default function C02aCreateEvaluationDraft() {
             </div>
           )}
 
-          {selectedClassId && classStudents.length > 0 && (
+          {/* Generate button */}
+          {selectedStudentId && (
             <div>
               <Button
                 className="w-full gap-2"
@@ -220,18 +258,15 @@ export default function C02aCreateEvaluationDraft() {
                 {generating ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Generuji…
+                    Generuji zkušební koncept…
                   </>
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4" />
-                    Vygenerovat hodnocení AI ({classStudents.length} žáků)
+                    Vygenerovat zkušební koncept
                   </>
                 )}
               </Button>
-              {progress && (
-                <p className="text-sm text-muted-foreground text-center mt-3">{progress}</p>
-              )}
             </div>
           )}
         </div>

@@ -50,6 +50,13 @@ serve(async (req) => {
         return true;
       });
 
+    // If no proofs, return immediately with noProofs flag
+    if (proofs.length === 0) {
+      return new Response(JSON.stringify({ text: "", noProofs: true, proofCount: 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const typeLabels: Record<string, string> = {
       prubezna: "průběžná zpětná vazba",
       tripartita: "hodnocení pro tripartitní schůzku",
@@ -57,9 +64,7 @@ serve(async (req) => {
       vlastni: "hodnocení",
     };
 
-    const proofsSummary = proofs.length > 0
-      ? proofs.map((p: any) => `- ${p.title} (${p.type}, ${p.date}): ${p.note || "bez poznámky"}`).join("\n")
-      : "Žádné důkazy o učení v daném období.";
+    const proofsSummary = proofs.map((p: any) => `- ${p.title} (${p.type}, ${p.date}): ${p.note || "bez poznámky"}`).join("\n");
 
     const systemPrompt = `Jsi zkušený český učitel, který píše slovní hodnocení žáků. Piš v češtině, vstřícně a konstruktivně. Zaměř se na konkrétní pozorování z důkazů o učení. Pokud není dostatek důkazů, napiš co nejlepší hodnocení z toho, co máš, a poznamenej, že by bylo vhodné doplnit více pozorování.`;
 
@@ -111,7 +116,7 @@ Napiš hodnocení v rozsahu 3-6 vět. Nepoužívej formátování markdown.`;
     const result = await aiResponse.json();
     const text = result.choices?.[0]?.message?.content || "";
 
-    return new Response(JSON.stringify({ text, proofCount: proofs.length }), {
+    return new Response(JSON.stringify({ text, noProofs: false, proofCount: proofs.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
