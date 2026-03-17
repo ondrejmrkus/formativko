@@ -60,12 +60,12 @@ export default function E02CaptureToolAddProofs() {
       toast({ title: "Napište poznámku", variant: "destructive" });
       return;
     }
-    try {
+      const today = new Date().toISOString().split("T")[0];
       await createProof.mutateAsync({
-        title: noteText.substring(0, 60),
+        title: `Poznámka ${today}`,
         type: "text",
         note: noteText,
-        date: new Date().toISOString().split("T")[0],
+        date: today,
         lessonId: selectedLesson,
         studentIds: selectedStudents,
       });
