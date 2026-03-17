@@ -85,9 +85,10 @@ export default function C01Evaluations() {
           onToggle={toggleFilter}
         />
 
-        <div className="hidden sm:grid grid-cols-[1fr_auto] gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
+        <div className="hidden sm:grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
           <span>Název hodnocení</span>
           <span className="w-24 text-center">Třída</span>
+          <span className="w-10"></span>
         </div>
 
         {isLoading ? (
