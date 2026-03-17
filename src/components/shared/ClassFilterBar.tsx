@@ -53,13 +53,13 @@ export function ClassFilterBar({ groups, selectedValues = {}, onToggle, vertical
             }}
           >
             <PopoverTrigger asChild>
-              <Badge
-                variant="outline"
-                className="cursor-pointer hover:bg-accent gap-1"
+              <button
+                type="button"
+                className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors hover:bg-accent text-foreground cursor-pointer gap-1"
               >
                 <Plus className="h-3 w-3" />
                 Přidat
-              </Badge>
+              </button>
             </PopoverTrigger>
             <PopoverContent className="w-56 p-2" align="start">
               <Input
