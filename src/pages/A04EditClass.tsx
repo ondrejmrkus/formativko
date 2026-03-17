@@ -87,8 +87,8 @@ export default function A04EditClass() {
         <AppBreadcrumb
           items={[
             { label: "Úvod", href: "/" },
-            { label: "Žáci", href: "/student-profiles" },
-            { label: "Upravit třídu" },
+            { label: "Třídy", href: "/classes" },
+            { label: currentClass?.name || "Upravit třídu" },
           ]}
         />
 
