@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import A01Dashboard from "./pages/A01Dashboard";
 import A02CreateStudentProfiles from "./pages/A02CreateStudentProfiles";
 import A03CreateClass from "./pages/A03CreateClass";
+import A04EditClass from "./pages/A04EditClass";
 import B01StudentProfiles from "./pages/B01StudentProfiles";
 import B02StudentProfileDetail from "./pages/B02StudentProfileDetail";
 import B03aProofOfLearningDetailText from "./pages/B03aProofOfLearningDetailText";
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><A01Dashboard /></ProtectedRoute>} />
             <Route path="/create-student-profiles" element={<ProtectedRoute><A02CreateStudentProfiles /></ProtectedRoute>} />
             <Route path="/create-class" element={<ProtectedRoute><A03CreateClass /></ProtectedRoute>} />
+            <Route path="/edit-class/:classId" element={<ProtectedRoute><A04EditClass /></ProtectedRoute>} />
             <Route path="/student-profiles" element={<ProtectedRoute><B01StudentProfiles /></ProtectedRoute>} />
             <Route path="/student-profiles/:id" element={<ProtectedRoute><B02StudentProfileDetail /></ProtectedRoute>} />
             <Route path="/student-profiles/:id/proof/:proofId" element={<ProtectedRoute><B03aProofOfLearningDetailText /></ProtectedRoute>} />
