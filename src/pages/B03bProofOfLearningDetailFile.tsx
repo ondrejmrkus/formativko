@@ -7,19 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Pencil, Download, Maximize2 } from "lucide-react";
 import { useParams } from "react-router-dom";
-import {
-  getStudentById,
-  getStudentDisplayName,
-  proofsOfLearning,
-} from "@/data/mockData";
+import { useStudent, useStudents, getStudentDisplayName } from "@/hooks/useStudents";
+import { useProof } from "@/hooks/useProofs";
 
 export default function B03bProofOfLearningDetailFile() {
   const { id, proofId } = useParams<{ id: string; proofId: string }>();
-  const student = getStudentById(id || "s1")!;
-  const proof = proofsOfLearning.find((p) => p.id === proofId) || proofsOfLearning[1];
+  const { data: student, isLoading: studentLoading } = useStudent(id);
+  const { data: proof, isLoading: proofLoading } = useProof(proofId);
+  const { data: allStudents = [] } = useStudents();
+
+  if (studentLoading || proofLoading || !student || !proof) {
+    return <AppLayout><div className="text-center py-12 text-muted-foreground">Načítání…</div></AppLayout>;
+  }
 
   const linkedStudents = proof.studentIds
-    .map((sid) => getStudentById(sid))
+    .map((sid) => allStudents.find((s) => s.id === sid))
     .filter(Boolean);
 
   return (
@@ -42,13 +44,16 @@ export default function B03bProofOfLearningDetailFile() {
         </div>
 
         <div className="space-y-4">
-          {/* File preview */}
           <div>
             <label className="text-sm font-medium text-muted-foreground block mb-2">Příloha</label>
             <div className="relative rounded-xl border border-border bg-muted overflow-hidden">
-              <div className="aspect-video bg-[repeating-conic-gradient(hsl(var(--muted))_0%_25%,hsl(var(--card))_0%_50%)] bg-[length:20px_20px] flex items-center justify-center">
-                <span className="text-muted-foreground text-sm">{proof.fileName || "soubor.jpg"}</span>
-              </div>
+              {proof.file_url ? (
+                <img src={proof.file_url} alt={proof.file_name || "Příloha"} className="w-full aspect-video object-contain bg-background" />
+              ) : (
+                <div className="aspect-video bg-[repeating-conic-gradient(hsl(var(--muted))_0%_25%,hsl(var(--card))_0%_50%)] bg-[length:20px_20px] flex items-center justify-center">
+                  <span className="text-muted-foreground text-sm">{proof.file_name || "soubor.jpg"}</span>
+                </div>
+              )}
               <div className="absolute top-2 right-2 flex gap-1">
                 <button className="p-2 bg-card/80 backdrop-blur rounded-lg hover:bg-card">
                   <Download className="h-4 w-4 text-foreground" />
@@ -60,7 +65,7 @@ export default function B03bProofOfLearningDetailFile() {
             </div>
           </div>
 
-          <LessonLinkField lessonId={proof.lessonId || null} />
+          <LessonLinkField lessonId={proof.lesson_id || null} />
           <DateField date={new Date(proof.date)} />
 
           <div>
@@ -74,7 +79,7 @@ export default function B03bProofOfLearningDetailFile() {
 
           <div>
             <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámka</label>
-            <Textarea className="min-h-[120px] bg-card" defaultValue={proof.note} />
+            <Textarea className="min-h-[120px] bg-card" defaultValue={proof.note || ""} />
           </div>
 
           <Button className="w-full" size="lg">

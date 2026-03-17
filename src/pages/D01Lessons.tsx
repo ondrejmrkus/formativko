@@ -5,16 +5,18 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowRight } from "lucide-react";
-import { lessons, classes, type Lesson } from "@/data/mockData";
+import { useLessons, type Lesson } from "@/hooks/useLessons";
+import { useClasses } from "@/hooks/useClasses";
 
 interface LessonSectionProps {
   title: string;
   items: Lesson[];
+  classes: { id: string; name: string }[];
   showArrow?: boolean;
   dimmed?: boolean;
 }
 
-function LessonSection({ title, items, showArrow = false, dimmed = false }: LessonSectionProps) {
+function LessonSection({ title, items, classes, showArrow = false, dimmed = false }: LessonSectionProps) {
   if (items.length === 0) return null;
   return (
     <div className="mb-6">
@@ -32,7 +34,7 @@ function LessonSection({ title, items, showArrow = false, dimmed = false }: Less
                 {lesson.title}
               </span>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-muted-foreground">{classes.find(c => c.id === lesson.classId)?.name}</span>
+                <span className="text-xs text-muted-foreground">{classes.find(c => c.id === lesson.class_id)?.name}</span>
                 <span className="text-xs text-muted-foreground">·</span>
                 <span className="text-xs text-muted-foreground">{lesson.subject}</span>
               </div>
@@ -48,6 +50,8 @@ function LessonSection({ title, items, showArrow = false, dimmed = false }: Less
 }
 
 export default function D01Lessons() {
+  const { data: lessons = [], isLoading } = useLessons();
+  const { data: classes = [] } = useClasses();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
 
@@ -63,6 +67,10 @@ export default function D01Lessons() {
     });
   };
 
+  const subjects = useMemo(() => {
+    return [...new Set(lessons.map((l) => l.subject))];
+  }, [lessons]);
+
   const filteredLessons = useMemo(() => {
     let result = [...lessons];
 
@@ -76,7 +84,7 @@ export default function D01Lessons() {
       const classIds = classes
         .filter((c) => selectedClasses.includes(c.name))
         .map((c) => c.id);
-      result = result.filter((l) => classIds.includes(l.classId));
+      result = result.filter((l) => l.class_id && classIds.includes(l.class_id));
     }
 
     const selectedSubjects = filters["Předmět"] || [];
@@ -85,7 +93,7 @@ export default function D01Lessons() {
     }
 
     return result;
-  }, [search, filters]);
+  }, [lessons, search, filters, classes]);
 
   const ongoing = filteredLessons.filter((l) => l.status === "ongoing");
   const prepared = filteredLessons.filter((l) => l.status === "prepared");
@@ -116,21 +124,23 @@ export default function D01Lessons() {
         <ClassFilterBar
           groups={[
             { label: "Třída", options: classes.map((c) => c.name) },
-            { label: "Předmět", options: ["Matematika", "Český jazyk", "Přírodopis", "Angličtina", "Dějepis", "Fyzika"] },
+            { label: "Předmět", options: subjects },
           ]}
           selectedValues={filters}
           onToggle={toggleFilter}
         />
 
-        {filteredLessons.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-12 text-muted-foreground">Načítání…</div>
+        ) : filteredLessons.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            Žádné lekce neodpovídají vyhledávání.
+            {lessons.length === 0 ? "Zatím nemáte žádné lekce." : "Žádné lekce neodpovídají vyhledávání."}
           </div>
         ) : (
           <>
-            <LessonSection title="Probíhající lekce" items={ongoing} showArrow />
-            <LessonSection title="Připravené lekce" items={prepared} showArrow />
-            <LessonSection title="Proběhlé lekce" items={past} dimmed />
+            <LessonSection title="Probíhající lekce" items={ongoing} classes={classes} showArrow />
+            <LessonSection title="Připravené lekce" items={prepared} classes={classes} showArrow />
+            <LessonSection title="Proběhlé lekce" items={past} classes={classes} dimmed />
           </>
         )}
       </div>

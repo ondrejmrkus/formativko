@@ -7,18 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link, useParams } from "react-router-dom";
 import { Plus } from "lucide-react";
-import {
-  getStudentById,
-  getClassesForStudent,
-  getProofsForStudent,
-  getStudentDisplayName,
-} from "@/data/mockData";
+import { useStudent, getStudentDisplayName } from "@/hooks/useStudents";
+import { useStudentClasses } from "@/hooks/useClasses";
+import { useProofsForStudent } from "@/hooks/useProofs";
 
 export default function B02StudentProfileDetail() {
   const { id } = useParams<{ id: string }>();
-  const student = getStudentById(id || "s1")!;
-  const studentClasses = getClassesForStudent(student.id);
-  const proofs = getProofsForStudent(student.id);
+  const { data: student, isLoading } = useStudent(id);
+  const { data: studentClasses = [] } = useStudentClasses(id);
+  const { data: proofs = [] } = useProofsForStudent(id);
 
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
@@ -43,7 +40,7 @@ export default function B02StudentProfileDetail() {
       result = result.filter(
         (p) =>
           p.title.toLowerCase().includes(q) ||
-          p.note.toLowerCase().includes(q)
+          (p.note || "").toLowerCase().includes(q)
       );
     }
 
@@ -61,6 +58,10 @@ export default function B02StudentProfileDetail() {
 
     return result;
   }, [proofs, search, filters]);
+
+  if (isLoading || !student) {
+    return <AppLayout><div className="text-center py-12 text-muted-foreground">Načítání…</div></AppLayout>;
+  }
 
   return (
     <AppLayout>
@@ -96,7 +97,6 @@ export default function B02StudentProfileDetail() {
           vertical
           groups={[
             { label: "Typ důkazu", options: ["Text", "Hlas", "Foto", "Soubor"] },
-            { label: "Předmět", options: ["Matematika", "Český jazyk"] },
           ]}
           selectedValues={filters}
           onToggle={toggleFilter}
@@ -131,11 +131,6 @@ export default function B02StudentProfileDetail() {
                       <Badge variant="outline" className="text-xs capitalize">
                         {proof.type}
                       </Badge>
-                      {proof.studentIds.length > 1 && (
-                        <span className="text-xs text-muted-foreground">
-                          +{proof.studentIds.length - 1} žáků
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>

@@ -4,24 +4,24 @@ import { StudentChip } from "@/components/shared/StudentChip";
 import { LessonLinkField } from "@/components/shared/LessonLinkField";
 import { DateField } from "@/components/shared/DateField";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Pencil } from "lucide-react";
 import { useParams } from "react-router-dom";
-import {
-  getStudentById,
-  getStudentDisplayName,
-  proofsOfLearning,
-  getStudentById as getStudent,
-} from "@/data/mockData";
+import { useStudent, useStudents, getStudentDisplayName } from "@/hooks/useStudents";
+import { useProof } from "@/hooks/useProofs";
 
 export default function B03aProofOfLearningDetailText() {
   const { id, proofId } = useParams<{ id: string; proofId: string }>();
-  const student = getStudentById(id || "s1")!;
-  const proof = proofsOfLearning.find((p) => p.id === proofId) || proofsOfLearning[0];
+  const { data: student, isLoading: studentLoading } = useStudent(id);
+  const { data: proof, isLoading: proofLoading } = useProof(proofId);
+  const { data: allStudents = [] } = useStudents();
+
+  if (studentLoading || proofLoading || !student || !proof) {
+    return <AppLayout><div className="text-center py-12 text-muted-foreground">Načítání…</div></AppLayout>;
+  }
 
   const linkedStudents = proof.studentIds
-    .map((sid) => getStudent(sid))
+    .map((sid) => allStudents.find((s) => s.id === sid))
     .filter(Boolean);
 
   return (
@@ -44,8 +44,7 @@ export default function B03aProofOfLearningDetailText() {
         </div>
 
         <div className="space-y-4">
-          <LessonLinkField lessonId={proof.lessonId || null} />
-
+          <LessonLinkField lessonId={proof.lesson_id || null} />
           <DateField date={new Date(proof.date)} />
 
           <div>
@@ -61,7 +60,7 @@ export default function B03aProofOfLearningDetailText() {
             <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámka</label>
             <Textarea
               className="min-h-[120px] bg-card"
-              defaultValue={proof.note}
+              defaultValue={proof.note || ""}
             />
           </div>
 
