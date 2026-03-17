@@ -2,9 +2,136 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useClassStudents } from "@/hooks/useClasses";
+import { useCreateEvaluation, useUpdateEvaluation } from "@/hooks/useEvaluations";
+import { getStudentDisplayName } from "@/hooks/useStudents";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2, ArrowLeft, ArrowRight, AlertTriangle } from "lucide-react";
 
 export default function C02bCreateEvaluationDraft() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+  const createEval = useCreateEvaluation();
+  const updateEval = useUpdateEvaluation();
+
+  const state = location.state as any;
+
+  // If no state, redirect back
+  if (!state?.groupId) {
+    return (
+      <AppLayout>
+        <div className="max-w-2xl mx-auto text-center py-12">
+          <p className="text-muted-foreground mb-4">Chybí data pro náhled.</p>
+          <Button variant="outline" onClick={() => navigate("/evaluations/create")}>
+            Zpět na tvorbu hodnocení
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const {
+    groupId, evaluationId, studentName, text: initialText, noProofs,
+    subject, period,
+    selectedType, selectedClassId, selectedStudentId,
+    dateFrom, dateTo, preferences, className, totalStudents,
+  } = state;
+
+  const [draftText, setDraftText] = useState(initialText || "");
+  const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState("");
+
+  const { data: classStudents = [] } = useClassStudents(selectedClassId || undefined);
+  const remainingStudents = classStudents.filter((s: any) => s.id !== selectedStudentId);
+
+  const handleBack = () => {
+    // Navigate back to C02a with all params restored
+    navigate("/evaluations/create", {
+      state: {
+        selectedType,
+        selectedClassId,
+        selectedStudentId,
+        dateFrom,
+        dateTo,
+        preferences,
+      },
+    });
+  };
+
+  const handleContinueForAll = async () => {
+    if (remainingStudents.length === 0) {
+      // Save current draft text if edited
+      if (draftText !== initialText) {
+        await updateEval.mutateAsync({ id: evaluationId, text: draftText });
+      }
+      navigate(`/evaluations/edit/${groupId}`);
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      // Save the current draft if edited
+      if (draftText !== initialText) {
+        await updateEval.mutateAsync({ id: evaluationId, text: draftText });
+      }
+
+      // Generate for remaining students
+      for (let i = 0; i < remainingStudents.length; i++) {
+        const student = remainingStudents[i] as any;
+        setProgress(`Generuji hodnocení pro ${getStudentDisplayName(student)} (${i + 1}/${remainingStudents.length})…`);
+
+        try {
+          const { data, error } = await supabase.functions.invoke("generate-evaluation", {
+            body: {
+              studentId: student.id,
+              evalType: selectedType,
+              dateFrom,
+              dateTo,
+              preferences: preferences?.trim() || null,
+            },
+          });
+
+          if (error) throw error;
+
+          const studentNoProofs = data?.noProofs === true;
+          const evalText = studentNoProofs ? "" : (data?.text || "");
+          const evalStatus = studentNoProofs ? "Nedostatek důkazů" : "waiting";
+
+          await createEval.mutateAsync({
+            studentId: student.id,
+            groupId,
+            subject,
+            period,
+            text: evalText,
+            status: evalStatus,
+          });
+        } catch (e: any) {
+          console.error(`Error generating for ${student.id}:`, e);
+          await createEval.mutateAsync({
+            studentId: student.id,
+            groupId,
+            subject,
+            period,
+            text: `[Chyba při generování: ${e?.message || "neznámá chyba"}]`,
+          });
+        }
+      }
+
+      toast({ title: "Hodnocení vygenerována!", description: `${totalStudents} konceptů celkem.` });
+      navigate(`/evaluations/edit/${groupId}`);
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Chyba při generování", description: e?.message, variant: "destructive" });
+    } finally {
+      setGenerating(false);
+      setProgress("");
+    }
+  };
+
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto">
@@ -12,32 +139,70 @@ export default function C02bCreateEvaluationDraft() {
           items={[
             { label: "Úvod", href: "/" },
             { label: "Hodnocení", href: "/evaluations" },
-            { label: "Vytvořit hodnocení", href: "/evaluations/create" },
+            { label: "Tvorba hodnocení", href: "/evaluations/create" },
             { label: "Náhled konceptu" },
           ]}
         />
 
         <h1 className="text-2xl font-bold mb-2">Náhled konceptu</h1>
-        <p className="text-muted-foreground mb-6">Krok 2 ze 2 — Kontrola a úpravy</p>
+        <p className="text-muted-foreground mb-6">
+          Zkontrolujte vygenerované hodnocení a rozhodněte se, zda pokračovat.
+        </p>
 
         <div className="space-y-6">
           <div className="p-4 rounded-xl bg-card border border-border">
-            <h2 className="font-semibold mb-1">Adam Novák</h2>
-            <p className="text-xs text-muted-foreground mb-3">Český jazyk · 1. pololetí</p>
+            <h2 className="font-semibold mb-1">{studentName}</h2>
+            <p className="text-xs text-muted-foreground mb-3">{subject} · {period}</p>
+
+            {noProofs && (
+              <div className="flex items-center gap-2 mb-3 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>Žák nemá žádné důkazy o učení v daném období. Hodnocení nebylo vygenerováno.</span>
+              </div>
+            )}
+
             <Textarea
               className="min-h-[160px] bg-background"
-              defaultValue="Adam se v hodinách českého jazyka aktivně zapojuje do diskuzí a prokazuje dobré porozumění literárním textům. Jeho písemný projev se zlepšuje, ale stále je třeba pracovat na pravopisu. V oblasti slohových prací projevuje kreativitu a originalitu. Doporučuji pokračovat v pravidelném čtení a procvičování pravopisu."
+              value={draftText}
+              onChange={(e) => setDraftText(e.target.value)}
+              placeholder={noProofs ? "Žádné hodnocení — nedostatek důkazů o učení." : ""}
             />
           </div>
 
           <div className="flex gap-3">
-            <Button asChild variant="outline" className="flex-1" size="lg">
-              <Link to="/evaluations/create">Zpět</Link>
+            <Button
+              variant="outline"
+              className="flex-1 gap-2"
+              size="lg"
+              onClick={handleBack}
+              disabled={generating}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Zpět k nastavení
             </Button>
-            <Button asChild className="flex-1" size="lg">
-              <Link to="/evaluations/edit/e1">Uložit koncepty</Link>
+            <Button
+              className="flex-1 gap-2"
+              size="lg"
+              onClick={handleContinueForAll}
+              disabled={generating}
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generuji…
+                </>
+              ) : (
+                <>
+                  <ArrowRight className="h-4 w-4" />
+                  Pokračovat pro celou třídu ({remainingStudents.length})
+                </>
+              )}
             </Button>
           </div>
+
+          {progress && (
+            <p className="text-sm text-muted-foreground text-center">{progress}</p>
+          )}
         </div>
       </div>
     </AppLayout>
