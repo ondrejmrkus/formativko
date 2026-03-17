@@ -83,11 +83,24 @@ export default function B03aProofOfLearningDetailText() {
         />
 
         <div className="flex items-center gap-2 mb-6">
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="text-2xl font-bold bg-transparent border-none p-0 h-auto focus-visible:ring-0 flex-1"
-          />
+          {editingTitle ? (
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={() => setEditingTitle(false)}
+              onKeyDown={(e) => e.key === "Enter" && setEditingTitle(false)}
+              className="text-2xl font-bold bg-card border border-border rounded-lg px-3 py-1 h-auto flex-1"
+              autoFocus
+            />
+          ) : (
+            <button
+              onClick={() => setEditingTitle(true)}
+              className="flex items-center gap-2 text-2xl font-bold text-foreground hover:text-primary transition-colors text-left flex-1 group"
+            >
+              <span>{title || proof.title}</span>
+              <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <button className="p-2 hover:bg-destructive/10 rounded-lg">
