@@ -1,8 +1,13 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Link } from "react-router-dom";
-import { Users, School, Camera, FileText } from "lucide-react";
+import { Users, School, Camera, FileText, Clock, AlertTriangle, BookOpen } from "lucide-react";
 import eliImage from "@/assets/Eli.svg";
 import { useProfile } from "@/hooks/useProfile";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useStudents, getStudentDisplayName } from "@/hooks/useStudents";
+import { useEvaluationGroups } from "@/hooks/useEvaluations";
 
 const actions = [
   {
@@ -32,11 +37,61 @@ const actions = [
 ];
 
 export default function A01Dashboard() {
+  const { user } = useAuth();
   const { displayName } = useProfile();
+  const { data: allStudents = [] } = useStudents();
+  const { data: evaluationGroups = [] } = useEvaluationGroups();
+
+  // Pending evaluations (waiting status)
+  const { data: pendingEvaluations = [] } = useQuery({
+    queryKey: ["evaluations", "pending"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("evaluations")
+        .select("id, student_id, group_id, subject, period, status")
+        .eq("status", "waiting")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Recent proofs of learning
+  const { data: recentProofs = [] } = useQuery({
+    queryKey: ["proofs", "recent"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("proofs_of_learning")
+        .select("id, title, type, date, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Group pending evaluations by group
+  const pendingByGroup = pendingEvaluations.reduce<Record<string, typeof pendingEvaluations>>((acc, ev) => {
+    const gid = ev.group_id || "ungrouped";
+    if (!acc[gid]) acc[gid] = [];
+    acc[gid].push(ev);
+    return acc;
+  }, {});
+
+  const proofTypeLabels: Record<string, string> = {
+    text: "Poznámka",
+    voice: "Hlasová nahrávka",
+    camera: "Foto",
+    file: "Soubor",
+  };
 
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto">
+        {/* Greeting */}
         <div className="flex items-center gap-4 mb-8">
           <img src={eliImage} alt="Eli mascot" className="h-80 w-80 object-contain" />
           <div>
@@ -49,6 +104,81 @@ export default function A01Dashboard() {
           </div>
         </div>
 
+        {/* Pending evaluations */}
+        {Object.keys(pendingByGroup).length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Hodnocení čekající na kontrolu
+            </h2>
+            <div className="space-y-2">
+              {Object.entries(pendingByGroup).map(([groupId, evals]) => {
+                const group = evaluationGroups.find((g) => g.id === groupId);
+                const studentNames = evals
+                  .slice(0, 3)
+                  .map((ev) => {
+                    const s = allStudents.find((st) => st.id === ev.student_id);
+                    return s ? getStudentDisplayName(s) : "—";
+                  });
+                const remaining = evals.length - 3;
+
+                return (
+                  <Link
+                    key={groupId}
+                    to={`/evaluations/edit/${groupId}`}
+                    className="flex items-center justify-between p-4 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {group?.name || "Hodnocení"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {studentNames.join(", ")}
+                        {remaining > 0 && ` a ${remaining} dalších`}
+                      </p>
+                    </div>
+                    <span className="shrink-0 ml-3 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                      {evals.length} čeká
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Recent proofs */}
+        {recentProofs.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Poslední důkazy o učení
+            </h2>
+            <div className="space-y-1">
+              {recentProofs.map((proof) => (
+                <div
+                  key={proof.id}
+                  className="flex items-center justify-between px-4 py-2.5 rounded-lg hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xs font-medium text-muted-foreground w-16 shrink-0">
+                      {proof.date}
+                    </span>
+                    <span className="text-sm text-foreground truncate">{proof.title}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0 ml-2">
+                    {proofTypeLabels[proof.type] || proof.type}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Quick actions */}
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
+          Rychlé akce
+        </h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {actions.map((action) => (
             <Link
