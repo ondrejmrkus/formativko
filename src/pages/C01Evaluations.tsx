@@ -103,7 +103,6 @@ export default function C01Evaluations() {
           </Button>
         </div>
 
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Filtrovat</p>
         <ClassFilterBar
           groups={[
             { label: "Třída", options: classes.map((c) => c.name) },
