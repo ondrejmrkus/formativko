@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import A01Dashboard from "./pages/A01Dashboard";
 import A02CreateStudentProfiles from "./pages/A02CreateStudentProfiles";
 import A03CreateClass from "./pages/A03CreateClass";
+import A04EditClass from "./pages/A04EditClass";
 import B01StudentProfiles from "./pages/B01StudentProfiles";
 import B02StudentProfileDetail from "./pages/B02StudentProfileDetail";
 import B03aProofOfLearningDetailText from "./pages/B03aProofOfLearningDetailText";
