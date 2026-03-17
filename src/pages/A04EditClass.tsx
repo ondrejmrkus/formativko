@@ -64,7 +64,7 @@ export default function A04EditClass() {
     try {
       await updateClass.mutateAsync({ classId, name: className.trim(), studentIds: selectedStudentIds });
       toast({ title: `Třída "${className}" uložena` });
-      navigate("/student-profiles");
+      navigate("/classes");
     } catch {
       toast({ title: "Chyba při ukládání třídy", variant: "destructive" });
     }
