@@ -120,3 +120,20 @@ export function useUpdateEvaluation() {
     },
   });
 }
+
+export function useDeleteEvaluationGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (groupId: string) => {
+      // Delete evaluations in the group first
+      const { error: evErr } = await supabase.from("evaluations").delete().eq("group_id", groupId);
+      if (evErr) throw evErr;
+      const { error } = await supabase.from("evaluation_groups").delete().eq("id", groupId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["evaluation_groups"] });
+      queryClient.invalidateQueries({ queryKey: ["evaluations"] });
+    },
+  });
+}

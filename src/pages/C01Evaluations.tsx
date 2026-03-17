@@ -5,13 +5,16 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Plus } from "lucide-react";
-import { useEvaluationGroups } from "@/hooks/useEvaluations";
+import { Plus, Trash2 } from "lucide-react";
+import { useEvaluationGroups, useDeleteEvaluationGroup } from "@/hooks/useEvaluations";
 import { useClasses } from "@/hooks/useClasses";
+import { useToast } from "@/hooks/use-toast";
 
 export default function C01Evaluations() {
   const { data: evaluationGroups = [], isLoading } = useEvaluationGroups();
   const { data: classes = [] } = useClasses();
+  const deleteGroup = useDeleteEvaluationGroup();
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
 
@@ -82,9 +85,10 @@ export default function C01Evaluations() {
           onToggle={toggleFilter}
         />
 
-        <div className="hidden sm:grid grid-cols-[1fr_auto] gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
+        <div className="hidden sm:grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
           <span>Název hodnocení</span>
           <span className="w-24 text-center">Třída</span>
+          <span className="w-10"></span>
         </div>
 
         {isLoading ? (
@@ -98,18 +102,31 @@ export default function C01Evaluations() {
             {filteredGroups.map((group) => {
               const cls = classes.find((c) => c.id === group.class_id);
               return (
-                <Link
+                <div
                   key={group.id}
-                  to={`/evaluations/edit/${group.id}`}
-                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
+                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
                 >
-                  <span className="font-medium text-foreground">
+                  <Link to={`/evaluations/edit/${group.id}`} className="font-medium text-foreground hover:underline">
                     {group.name}
-                  </span>
+                  </Link>
                   <span className="w-24 text-center text-sm text-muted-foreground">
                     {cls?.name || "—"}
                   </span>
-                </Link>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Opravdu chcete smazat toto hodnocení včetně všech konceptů?")) {
+                        deleteGroup.mutate(group.id, {
+                          onSuccess: () => toast({ title: "Hodnocení smazáno." }),
+                          onError: (e) => toast({ title: "Chyba při mazání", description: e.message, variant: "destructive" }),
+                        });
+                      }
+                    }}
+                    className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    title="Smazat hodnocení"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               );
             })}
           </div>
