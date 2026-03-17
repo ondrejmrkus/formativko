@@ -127,7 +127,15 @@ export default function A01Dashboard() {
                     className="block p-3 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-sm transition-all"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <h3 className="font-medium text-foreground text-sm truncate">{proof.title}</h3>
+                      <div className="min-w-0">
+                        <h3 className="font-medium text-foreground text-sm truncate">{proof.title}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                          {proof.proof_students?.map((ps: any) => {
+                            const s = allStudents.find((st) => st.id === ps.student_id);
+                            return s ? getStudentDisplayName(s) : null;
+                          }).filter(Boolean).join(", ") || "—"}
+                        </p>
+                      </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <Badge variant="outline" className="text-[10px] capitalize">{proofTypeLabels[proof.type] || proof.type}</Badge>
                         <span className="text-xs text-muted-foreground">{proof.date}</span>
