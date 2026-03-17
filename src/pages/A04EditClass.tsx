@@ -75,7 +75,7 @@ export default function A04EditClass() {
     try {
       await deleteClass.mutateAsync(classId);
       toast({ title: "Třída smazána" });
-      navigate("/student-profiles");
+      navigate("/classes");
     } catch {
       toast({ title: "Chyba při mazání třídy", variant: "destructive" });
     }
