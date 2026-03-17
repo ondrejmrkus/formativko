@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 export default function C01Evaluations() {
   const { data: evaluationGroups = [], isLoading } = useEvaluationGroups();
   const { data: classes = [] } = useClasses();
+  const deleteGroup = useDeleteEvaluationGroup();
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
 
