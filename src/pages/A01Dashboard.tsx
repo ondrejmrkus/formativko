@@ -2,6 +2,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Link } from "react-router-dom";
 import { Users, School, Camera, FileText } from "lucide-react";
 import eliImage from "@/assets/Eli.svg";
+import { useProfile } from "@/hooks/useProfile";
 
 const actions = [
   {
@@ -31,13 +32,17 @@ const actions = [
 ];
 
 export default function A01Dashboard() {
+  const { displayName } = useProfile();
+
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <img src={eliImage} alt="Eli mascot" className="h-80 w-80 object-contain" />
           <div>
-            <h1 className="text-2xl font-bold mb-1">Dobrý den, Radovane!</h1>
+            <h1 className="text-2xl font-bold mb-1">
+              Dobrý den{displayName ? `, ${displayName}` : ""}!
+            </h1>
             <p className="text-muted-foreground">
               Jak vám mohu dnes pomoci?
             </p>
