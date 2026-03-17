@@ -21,6 +21,7 @@ import C02aCreateEvaluationDraft from "./pages/C02aCreateEvaluationDraft";
 import C02bCreateEvaluationDraft from "./pages/C02bCreateEvaluationDraft";
 import C03EditEvaluationDrafts from "./pages/C03EditEvaluationDrafts";
 import D01Lessons from "./pages/D01Lessons";
+import F01Classes from "./pages/F01Classes";
 import E01CaptureToolChooseClass from "./pages/E01CaptureToolChooseClass";
 import E02CaptureToolAddProofs from "./pages/E02CaptureToolAddProofs";
 import NotFound from "./pages/NotFound";
