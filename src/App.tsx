@@ -21,6 +21,7 @@ import C02aCreateEvaluationDraft from "./pages/C02aCreateEvaluationDraft";
 import C02bCreateEvaluationDraft from "./pages/C02bCreateEvaluationDraft";
 import C03EditEvaluationDrafts from "./pages/C03EditEvaluationDrafts";
 import D01Lessons from "./pages/D01Lessons";
+import F01Classes from "./pages/F01Classes";
 import E01CaptureToolChooseClass from "./pages/E01CaptureToolChooseClass";
 import E02CaptureToolAddProofs from "./pages/E02CaptureToolAddProofs";
 import NotFound from "./pages/NotFound";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/evaluations/create/preview" element={<ProtectedRoute><C02bCreateEvaluationDraft /></ProtectedRoute>} />
             <Route path="/evaluations/edit/:id" element={<ProtectedRoute><C03EditEvaluationDrafts /></ProtectedRoute>} />
             <Route path="/lessons" element={<ProtectedRoute><D01Lessons /></ProtectedRoute>} />
+            <Route path="/classes" element={<ProtectedRoute><F01Classes /></ProtectedRoute>} />
             <Route path="/capture" element={<ProtectedRoute><E01CaptureToolChooseClass /></ProtectedRoute>} />
             <Route path="/capture/:classId" element={<ProtectedRoute><E02CaptureToolAddProofs /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
