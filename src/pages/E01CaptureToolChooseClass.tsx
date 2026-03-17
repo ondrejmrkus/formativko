@@ -24,9 +24,13 @@ export default function E01CaptureToolChooseClass() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="p-4 text-center border-b border-border bg-card">
-        <h1 className="text-lg font-bold text-foreground">Zachytávač</h1>
-        <p className="text-sm text-muted-foreground">Vyberte třídu</p>
+      <header className="flex items-center justify-between p-4 border-b border-border bg-card">
+        <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← Úvod</Link>
+        <div className="text-center">
+          <h1 className="text-lg font-bold text-foreground">Zachytávač</h1>
+          <p className="text-sm text-muted-foreground">Vyberte třídu</p>
+        </div>
+        <div className="w-12" />
       </header>
 
       <div className="flex-1 p-4 flex flex-col gap-3 max-w-md mx-auto w-full">
