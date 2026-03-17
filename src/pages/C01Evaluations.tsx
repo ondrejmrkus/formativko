@@ -5,9 +5,10 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Plus } from "lucide-react";
-import { useEvaluationGroups } from "@/hooks/useEvaluations";
+import { Plus, Trash2 } from "lucide-react";
+import { useEvaluationGroups, useDeleteEvaluationGroup } from "@/hooks/useEvaluations";
 import { useClasses } from "@/hooks/useClasses";
+import { useToast } from "@/hooks/use-toast";
 
 export default function C01Evaluations() {
   const { data: evaluationGroups = [], isLoading } = useEvaluationGroups();
