@@ -1,6 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { StudentChip } from "@/components/shared/StudentChip";
+import { Pencil } from "lucide-react";
 import { LessonLinkField } from "@/components/shared/LessonLinkField";
 import { DateField } from "@/components/shared/DateField";
 import { Button } from "@/components/ui/button";
