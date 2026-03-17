@@ -18,6 +18,7 @@ import {
 const navItems = [
   { title: "Pomocník", url: "/", icon: Home },
   { title: "Žáci", url: "/student-profiles", icon: Users },
+  { title: "Třídy", url: "/classes", icon: GraduationCap },
   { title: "Hodnocení", url: "/evaluations", icon: FileText },
   { title: "Lekce", url: "/lessons", icon: BookOpen },
 ];
