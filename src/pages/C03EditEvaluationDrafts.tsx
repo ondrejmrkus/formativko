@@ -157,11 +157,11 @@ export default function C03EditEvaluationDrafts() {
                       <Button
                         size="sm"
                         className="gap-1"
-                        onClick={handleApprove}
-                        disabled={getStatus(activeEvalId!) === "approved"}
+                        variant={getStatus(activeEvalId!) === "approved" ? "outline" : "default"}
+                        onClick={handleToggleApprove}
                       >
                         <Check className="h-3.5 w-3.5" />
-                        {getStatus(activeEvalId!) === "approved" ? "Schváleno" : "Schválit"}
+                        {getStatus(activeEvalId!) === "approved" ? "Zrušit schválení" : "Schválit"}
                       </Button>
                       <Button size="sm" variant="outline" className="gap-1" onClick={handleCopy}>
                         <Copy className="h-3.5 w-3.5" />
