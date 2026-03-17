@@ -30,6 +30,7 @@ export default function B03aProofOfLearningDetailText() {
 
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
+  const [editingTitle, setEditingTitle] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
