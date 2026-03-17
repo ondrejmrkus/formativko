@@ -101,18 +101,31 @@ export default function C01Evaluations() {
             {filteredGroups.map((group) => {
               const cls = classes.find((c) => c.id === group.class_id);
               return (
-                <Link
+                <div
                   key={group.id}
-                  to={`/evaluations/edit/${group.id}`}
-                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
+                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
                 >
-                  <span className="font-medium text-foreground">
+                  <Link to={`/evaluations/edit/${group.id}`} className="font-medium text-foreground hover:underline">
                     {group.name}
-                  </span>
+                  </Link>
                   <span className="w-24 text-center text-sm text-muted-foreground">
                     {cls?.name || "—"}
                   </span>
-                </Link>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Opravdu chcete smazat toto hodnocení včetně všech konceptů?")) {
+                        deleteGroup.mutate(group.id, {
+                          onSuccess: () => toast({ title: "Hodnocení smazáno." }),
+                          onError: (e) => toast({ title: "Chyba při mazání", description: e.message, variant: "destructive" }),
+                        });
+                      }
+                    }}
+                    className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    title="Smazat hodnocení"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               );
             })}
           </div>
