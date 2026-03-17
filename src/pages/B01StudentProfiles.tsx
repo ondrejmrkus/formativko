@@ -106,7 +106,9 @@ export default function B01StudentProfiles() {
           ]}
         />
 
-        <h1 className="text-2xl font-bold mb-4">Profily žáků</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold">Profily žáků</h1>
+        </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mb-4">
           <SearchBar placeholder="Hledat žáka..." value={search} onChange={setSearch} />
@@ -119,6 +121,20 @@ export default function B01StudentProfiles() {
           selectedValues={filters}
           onToggle={toggleFilter}
         />
+
+        {classes.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {classes.map((c) => (
+              <Link
+                key={c.id}
+                to={`/edit-class/${c.id}`}
+                className="text-xs text-primary hover:underline"
+              >
+                ✏️ {c.name}
+              </Link>
+            ))}
+          </div>
+        )}
 
         <div className="hidden sm:grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
           <span>Jméno</span>
