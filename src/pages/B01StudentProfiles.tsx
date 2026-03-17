@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SearchBar } from "@/components/shared/SearchBar";
 import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
