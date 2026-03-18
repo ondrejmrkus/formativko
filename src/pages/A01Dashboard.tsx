@@ -68,12 +68,6 @@ export default function A01Dashboard() {
     return acc;
   }, {});
 
-  const proofTypeLabels: Record<string, string> = {
-    text: "Poznámka",
-    voice: "Hlasová nahrávka",
-    camera: "Foto",
-    file: "Soubor",
-  };
 
   return (
     <AppLayout>
