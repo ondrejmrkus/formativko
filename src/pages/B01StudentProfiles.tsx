@@ -181,19 +181,19 @@ export default function B01StudentProfiles() {
                 <Link
                   key={student.id}
                   to={`/student-profiles/${student.id}`}
-                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
+                  className="grid grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
                 >
-                  <span className="font-medium text-foreground">
+                  <span className="font-medium text-foreground truncate">
                     {getStudentDisplayName(student)}
                   </span>
-                  <div className="flex gap-1">
+                  <div className="hidden sm:flex gap-1">
                     {studentClasses.map((c) => (
                       <Badge key={c.id} variant="secondary" className="text-xs">
                         {c.name}
                       </Badge>
                     ))}
                   </div>
-                  <span className="text-sm text-muted-foreground w-20 text-center">
+                  <span className="text-sm text-muted-foreground w-16 sm:w-20 text-center">
                     {proofCount}
                   </span>
                 </Link>
