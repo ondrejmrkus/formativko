@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/popover";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Mic, Camera, Upload, FileText, Plus } from "lucide-react";
+import { Mic, Camera, Upload, FileText, Plus, Star } from "lucide-react";
 import { useStudent, useStudents, getStudentDisplayName } from "@/hooks/useStudents";
 import { useCreateProof } from "@/hooks/useProofs";
 import { useToast } from "@/hooks/use-toast";
