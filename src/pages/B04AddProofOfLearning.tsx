@@ -18,10 +18,11 @@ import { useStudent, useStudents, getStudentDisplayName } from "@/hooks/useStude
 import { useCreateProof } from "@/hooks/useProofs";
 import { useToast } from "@/hooks/use-toast";
 
-type ProofType = "text" | "voice" | "camera" | "file";
+type ProofType = "text" | "voice" | "camera" | "file" | "grade";
 
 const proofTypes: { type: ProofType; label: string; icon: React.ElementType }[] = [
   { type: "text", label: "Textová poznámka", icon: FileText },
+  { type: "grade", label: "Známka", icon: Star },
   { type: "voice", label: "Hlasová poznámka", icon: Mic },
   { type: "camera", label: "Vyfotit obrázek", icon: Camera },
   { type: "file", label: "Nahrát soubor", icon: Upload },
