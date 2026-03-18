@@ -190,6 +190,35 @@ export default function C01Evaluations() {
             })}
           </div>
         )}
+
+
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Smazat hodnocení</AlertDialogTitle>
+              <AlertDialogDescription>
+                Opravdu chcete smazat hodnocení „{deleteTarget?.name}"? Tato akce je nevratná a smaže všechny koncepty v tomto hodnocení.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Zrušit</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  if (deleteTarget) {
+                    deleteGroup.mutate(deleteTarget.id, {
+                      onSuccess: () => toast({ title: "Hodnocení smazáno." }),
+                      onError: (err) => toast({ title: "Chyba při mazání", description: err.message, variant: "destructive" }),
+                    });
+                  }
+                  setDeleteTarget(null);
+                }}
+              >
+                Smazat
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppLayout>
   );
