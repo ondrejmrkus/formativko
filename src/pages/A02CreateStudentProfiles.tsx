@@ -4,20 +4,19 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Upload, X } from "lucide-react";
+import { Plus, Upload, X, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateStudents } from "@/hooks/useStudents";
+import { supabase } from "@/integrations/supabase/client";
 
 function parseNamesFromText(text: string): { first: string; last: string }[] {
   const results: { first: string; last: string }[] = [];
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   for (const line of lines) {
-    // Try splitting by comma, semicolon, or tab (CSV-like)
     const parts = line.split(/[,;\t]+/).map((p) => p.trim()).filter(Boolean);
     if (parts.length >= 2) {
       results.push({ first: parts[0], last: parts[1] });
     } else {
-      // Split by spaces
       const words = line.split(/\s+/).filter(Boolean);
       if (words.length >= 2) {
         const first = words.slice(0, -1).join(" ");
@@ -31,6 +30,14 @@ function parseNamesFromText(text: string): { first: string; last: string }[] {
   return results;
 }
 
+const TEXT_EXTENSIONS = [".csv", ".txt", ".tsv", ".text"];
+
+function isTextFile(file: File): boolean {
+  if (file.type.startsWith("text/")) return true;
+  const name = file.name.toLowerCase();
+  return TEXT_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
+
 export default function A02CreateStudentProfiles() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -42,6 +49,7 @@ export default function A02CreateStudentProfiles() {
     { first: "", last: "" },
   ]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const updateRow = (index: number, field: "first" | "last", value: string) => {
     setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
@@ -54,21 +62,58 @@ export default function A02CreateStudentProfiles() {
     setRows((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const addParsedNames = (parsed: { first: string; last: string }[]) => {
+    if (parsed.length === 0) {
+      toast({ title: "V souboru nebyla nalezena žádná jména", variant: "destructive" });
+      return;
+    }
+    setRows((prev) => {
+      const nonEmpty = prev.filter((r) => r.first.trim() || r.last.trim());
+      return [...nonEmpty, ...parsed];
+    });
+    toast({ title: `Načteno ${parsed.length} ${parsed.length === 1 ? "jméno" : "jmen"} ze souboru` });
+  };
+
+  const processFileWithAI = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
+
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-names`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: formData,
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Chyba při zpracování souboru");
+    }
+
+    const { names } = await res.json();
+    return (names || []) as { first: string; last: string }[];
+  };
+
   const processFile = async (file: File) => {
     try {
-      const text = await file.text();
-      const parsed = parseNamesFromText(text);
-      if (parsed.length === 0) {
-        toast({ title: "V souboru nebyla nalezena žádná jména", variant: "destructive" });
-        return;
+      if (isTextFile(file)) {
+        const text = await file.text();
+        const parsed = parseNamesFromText(text);
+        addParsedNames(parsed);
+      } else {
+        setIsProcessing(true);
+        const parsed = await processFileWithAI(file);
+        addParsedNames(parsed);
       }
-      setRows((prev) => {
-        const nonEmpty = prev.filter((r) => r.first.trim() || r.last.trim());
-        return [...nonEmpty, ...parsed];
-      });
-      toast({ title: `Načteno ${parsed.length} ${parsed.length === 1 ? "jméno" : "jmen"} ze souboru` });
     } catch {
-      toast({ title: "Nepodařilo se přečíst soubor", variant: "destructive" });
+      toast({ title: "Nepodařilo se zpracovat soubor", variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -146,24 +191,34 @@ export default function A02CreateStudentProfiles() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv,.txt,.tsv,.text"
+          accept=".csv,.txt,.tsv,.text,.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.heic,.bmp,.gif"
           className="hidden"
           onChange={handleFileChange}
         />
         <div
-          className={`border-2 border-dashed rounded-xl p-8 text-center mb-6 bg-card cursor-pointer transition-colors ${isDragOver ? "border-primary bg-primary/5" : "border-border"}`}
-          onClick={() => fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-xl p-8 text-center mb-6 bg-card cursor-pointer transition-colors ${isDragOver ? "border-primary bg-primary/5" : "border-border"} ${isProcessing ? "pointer-events-none opacity-60" : ""}`}
+          onClick={() => !isProcessing && fileInputRef.current?.click()}
           onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
           onDragLeave={() => setIsDragOver(false)}
           onDrop={handleDrop}
         >
-          <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground mb-1">Hromadné nahrání žáků</p>
-          <p className="text-xs text-muted-foreground">Přetáhněte sem soubor nebo klikněte pro výběr (CSV, TXT, …)</p>
-          <p className="text-xs text-muted-foreground mt-1">Formát: jedno jméno na řádek (Jméno Příjmení) nebo oddělené čárkou</p>
+          {isProcessing ? (
+            <>
+              <Loader2 className="h-8 w-8 text-primary mx-auto mb-2 animate-spin" />
+              <p className="text-sm text-muted-foreground mb-1">Zpracovávám soubor…</p>
+              <p className="text-xs text-muted-foreground">AI rozpoznává jména ze souboru</p>
+            </>
+          ) : (
+            <>
+              <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground mb-1">Hromadné nahrání žáků</p>
+              <p className="text-xs text-muted-foreground">Přetáhněte sem soubor nebo klikněte pro výběr</p>
+              <p className="text-xs text-muted-foreground mt-1">CSV, TXT, PDF, Word, Excel, nebo fotografie seznamu</p>
+            </>
+          )}
         </div>
 
-        <Button className="w-full" size="lg" onClick={handleSave} disabled={createStudents.isPending}>
+        <Button className="w-full" size="lg" onClick={handleSave} disabled={createStudents.isPending || isProcessing}>
           {createStudents.isPending ? "Ukládání…" : "Uložit profily"}
         </Button>
       </div>
