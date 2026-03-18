@@ -66,7 +66,7 @@ serve(async (req) => {
 
     const proofsSummary = proofs.map((p: any) => `- ${p.title} (${p.type}, ${p.date}): ${p.note || "bez poznámky"}`).join("\n");
 
-    const systemPrompt = `Jsi zkušený český učitel, který píše slovní hodnocení žáků. Piš v češtině, vstřícně a konstruktivně. Zaměř se na konkrétní pozorování z důkazů o učení. Pokud není dostatek důkazů, napiš co nejlepší hodnocení z toho, co máš, a poznamenej, že by bylo vhodné doplnit více pozorování.`;
+    const systemPrompt = `Jsi zkušený český učitel, který píše slovní hodnocení žáků. Piš v češtině, vstřícně a konstruktivně. Zaměř se na konkrétní pozorování z důkazů o učení. Pokud není dostatek důkazů, napiš co nejlepší hodnocení z toho, co máš, a poznamenej, že by bylo vhodné doplnit více pozorování.${preferences ? `\n\nKRITICKÝ POKYN OD UČITELE (musíš ho striktně dodržet): ${preferences}` : ""}`;
 
     const userPrompt = `Napiš ${typeLabels[evalType] || "hodnocení"} pro žáka ${student.first_name} ${student.last_name}.
 
@@ -75,9 +75,7 @@ Období: ${dateFrom || "neurčeno"} – ${dateTo || "neurčeno"}
 Důkazy o učení:
 ${proofsSummary}
 
-${preferences ? `Preference učitele: ${preferences}` : ""}
-
-Napiš hodnocení v rozsahu 3-6 vět. Nepoužívej formátování markdown.`;
+${preferences ? `PŘIPOMÍNKA: Dodržuj pokyn učitele: ${preferences}` : "Napiš hodnocení v rozsahu 3-6 vět."} Nepoužívej formátování markdown.`;
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
