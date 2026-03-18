@@ -187,11 +187,11 @@ export default function E02CaptureToolAddProofs() {
         })}
       </div>
 
-      {captureMode === "note" && (
+      {(captureMode === "note" || captureMode === "grade") && (
         <div className="border-t border-border bg-card p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">
-              Poznámka pro {selectedStudents.length} žáků
+              {captureMode === "grade" ? "Známka" : "Poznámka"} pro {selectedStudents.length} žáků
             </span>
             <button onClick={() => setCaptureMode(null)} className="p-1 hover:bg-accent rounded">
               <X className="h-4 w-4 text-muted-foreground" />
@@ -199,14 +199,14 @@ export default function E02CaptureToolAddProofs() {
           </div>
           <Textarea
             className="min-h-[80px] bg-background"
-            placeholder="Napište poznámku..."
+            placeholder={captureMode === "grade" ? "Zapište známku a komentář..." : "Napište poznámku..."}
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             autoFocus
           />
-          <Button className="w-full gap-1" onClick={handleSaveNote} disabled={createProof.isPending}>
+          <Button className="w-full gap-1" onClick={() => handleSaveNote(captureMode === "grade" ? "grade" : "text")} disabled={createProof.isPending}>
             <Check className="h-4 w-4" />
-            {createProof.isPending ? "Ukládání…" : "Uložit poznámku"}
+            {createProof.isPending ? "Ukládání…" : captureMode === "grade" ? "Uložit známku" : "Uložit poznámku"}
           </Button>
         </div>
       )}
