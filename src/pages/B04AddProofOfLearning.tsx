@@ -46,6 +46,33 @@ export default function B04AddProofOfLearning() {
   const [studentSearch, setStudentSearch] = useState("");
 
   const handleSave = async () => {
+    if (selectedType === "grade") {
+      const studentsWithGrades = attachedStudentIds.filter((sid) => studentGrades[sid]);
+      if (studentsWithGrades.length === 0) {
+        toast({ title: "Přiřaďte alespoň jednu známku", variant: "destructive" });
+        return;
+      }
+      try {
+        const dateStr = date.toISOString().split("T")[0];
+        for (const sid of studentsWithGrades) {
+          const grade = studentGrades[sid];
+          await createProof.mutateAsync({
+            title: title.trim() || `Známka ${grade}`,
+            type: "grade",
+            note,
+            date: dateStr,
+            lessonId: selectedLessonId,
+            studentIds: [sid],
+          });
+        }
+        toast({ title: "Známky uloženy" });
+        navigate(`/student-profiles/${id}`);
+      } catch {
+        toast({ title: "Chyba při ukládání", variant: "destructive" });
+      }
+      return;
+    }
+
     if (!title.trim()) {
       toast({ title: "Zadejte název důkazu", variant: "destructive" });
       return;
