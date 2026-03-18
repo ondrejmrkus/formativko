@@ -59,20 +59,6 @@ export default function A01Dashboard() {
     enabled: !!user,
   });
 
-  // Recent proofs of learning
-  const { data: recentProofs = [] } = useQuery({
-    queryKey: ["proofs", "recent"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("proofs_of_learning")
-        .select("id, title, type, date, created_at, proof_students(student_id)")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (error) throw error;
-      return data as (typeof data[0] & { proof_students: { student_id: string }[] })[];
-    },
-    enabled: !!user,
-  });
 
   // Group pending evaluations by group
   const pendingByGroup = pendingEvaluations.reduce<Record<string, typeof pendingEvaluations>>((acc, ev) => {
