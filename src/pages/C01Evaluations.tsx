@@ -31,6 +31,7 @@ export default function C01Evaluations() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   // Fetch all evaluations to compute per-group stats
   const { data: allEvaluations = [] } = useQuery({
