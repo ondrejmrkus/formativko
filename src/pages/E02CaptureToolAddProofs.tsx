@@ -55,16 +55,16 @@ export default function E02CaptureToolAddProofs() {
     setCaptureMode(mode);
   };
 
-  const handleSaveNote = async () => {
+  const handleSaveNote = async (type: "text" | "grade" = "text") => {
     if (!noteText.trim()) {
-      toast({ title: "Napište poznámku", variant: "destructive" });
+      toast({ title: type === "grade" ? "Napište známku" : "Napište poznámku", variant: "destructive" });
       return;
     }
     try {
       const today = new Date().toISOString().split("T")[0];
       await createProof.mutateAsync({
-        title: `Poznámka ${today}`,
-        type: "text",
+        title: type === "grade" ? `Známka ${today}` : `Poznámka ${today}`,
+        type,
         note: noteText,
         date: today,
         lessonId: selectedLesson,
@@ -75,7 +75,7 @@ export default function E02CaptureToolAddProofs() {
         selectedStudents.forEach((id) => { updated[id] = (updated[id] || 0) + 1; });
         return updated;
       });
-      toast({ title: `Poznámka uložena pro ${selectedStudents.length} žáků` });
+      toast({ title: `${type === "grade" ? "Známka" : "Poznámka"} uložena pro ${selectedStudents.length} žáků` });
       setNoteText("");
       setCaptureMode(null);
       setSelectedStudents([]);
