@@ -72,13 +72,13 @@ export default function A01Dashboard() {
     <AppLayout>
       <div className="max-w-3xl mx-auto">
         {/* Greeting */}
-        <div className="flex items-center gap-4 mb-8">
-          <img src={eliImage} alt="Eli mascot" className="h-80 w-80 object-contain" />
-          <div>
-            <h1 className="text-2xl font-bold mb-1">
+        <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-5 mb-8">
+          <img src={eliImage} alt="Eli mascot" className="h-32 w-32 sm:h-44 sm:w-44 md:h-56 md:w-56 object-contain shrink-0" />
+          <div className="text-center sm:text-left">
+            <h1 className="text-xl sm:text-2xl font-bold mb-1">
               Dobrý den{displayName ? `, ${displayName}` : ""}!
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground">
               Jak vám mohu dnes pomoci?
             </p>
           </div>
