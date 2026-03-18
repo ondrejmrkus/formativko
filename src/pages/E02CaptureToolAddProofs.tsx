@@ -56,16 +56,16 @@ export default function E02CaptureToolAddProofs() {
     setCaptureMode(mode);
   };
 
-  const handleSaveNote = async (type: "text" | "grade" = "text") => {
+  const handleSaveNote = async () => {
     if (!noteText.trim()) {
-      toast({ title: type === "grade" ? "Napište známku" : "Napište poznámku", variant: "destructive" });
+      toast({ title: "Napište poznámku", variant: "destructive" });
       return;
     }
     try {
       const today = new Date().toISOString().split("T")[0];
       await createProof.mutateAsync({
-        title: type === "grade" ? `Známka ${today}` : `Poznámka ${today}`,
-        type,
+        title: `Poznámka ${today}`,
+        type: "text",
         note: noteText,
         date: today,
         lessonId: selectedLesson,
@@ -76,8 +76,42 @@ export default function E02CaptureToolAddProofs() {
         selectedStudents.forEach((id) => { updated[id] = (updated[id] || 0) + 1; });
         return updated;
       });
-      toast({ title: `${type === "grade" ? "Známka" : "Poznámka"} uložena pro ${selectedStudents.length} žáků` });
+      toast({ title: `Poznámka uložena pro ${selectedStudents.length} žáků` });
       setNoteText("");
+      setCaptureMode(null);
+      setSelectedStudents([]);
+    } catch {
+      toast({ title: "Chyba při ukládání", variant: "destructive" });
+    }
+  };
+
+  const handleSaveGrades = async () => {
+    const studentsWithGrades = selectedStudents.filter((id) => studentGrades[id]);
+    if (studentsWithGrades.length === 0) {
+      toast({ title: "Přiřaďte alespoň jednu známku", variant: "destructive" });
+      return;
+    }
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      for (const sid of studentsWithGrades) {
+        const grade = studentGrades[sid];
+        await createProof.mutateAsync({
+          title: `Známka ${grade}`,
+          type: "grade",
+          note: noteText || "",
+          date: today,
+          lessonId: selectedLesson,
+          studentIds: [sid],
+        });
+      }
+      setProofCounts((prev) => {
+        const updated = { ...prev };
+        studentsWithGrades.forEach((id) => { updated[id] = (updated[id] || 0) + 1; });
+        return updated;
+      });
+      toast({ title: `Známky uloženy pro ${studentsWithGrades.length} žáků` });
+      setNoteText("");
+      setStudentGrades({});
       setCaptureMode(null);
       setSelectedStudents([]);
     } catch {
