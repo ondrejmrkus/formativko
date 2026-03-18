@@ -134,6 +134,18 @@ export default function B04AddProofOfLearning() {
             </div>
           )}
 
+          {selectedType === "grade" && (
+            <div>
+              <label className="text-sm font-medium text-muted-foreground block mb-2">Známka a poznámka</label>
+              <Textarea
+                className="min-h-[120px] bg-card"
+                placeholder="Zapište známku a volitelný komentář..."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </div>
+          )}
+
           {selectedType === "voice" && (
             <div className="space-y-4">
               <Button variant="outline" className="w-full gap-2 h-16 text-base">
