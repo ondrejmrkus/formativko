@@ -1,7 +1,6 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Link } from "react-router-dom";
-import { Users, School, Camera, FileText, Clock, BookOpen } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Users, School, Camera, FileText, Clock } from "lucide-react";
 import eliImage from "@/assets/Eli.svg";
 import { useProfile } from "@/hooks/useProfile";
 import { useQuery } from "@tanstack/react-query";
@@ -59,20 +58,6 @@ export default function A01Dashboard() {
     enabled: !!user,
   });
 
-  // Recent proofs of learning
-  const { data: recentProofs = [] } = useQuery({
-    queryKey: ["proofs", "recent"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("proofs_of_learning")
-        .select("id, title, type, date, created_at, proof_students(student_id)")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (error) throw error;
-      return data as (typeof data[0] & { proof_students: { student_id: string }[] })[];
-    },
-    enabled: !!user,
-  });
 
   // Group pending evaluations by group
   const pendingByGroup = pendingEvaluations.reduce<Record<string, typeof pendingEvaluations>>((acc, ev) => {
@@ -82,12 +67,6 @@ export default function A01Dashboard() {
     return acc;
   }, {});
 
-  const proofTypeLabels: Record<string, string> = {
-    text: "Poznámka",
-    voice: "Hlasová nahrávka",
-    camera: "Foto",
-    file: "Soubor",
-  };
 
   return (
     <AppLayout>
@@ -105,48 +84,6 @@ export default function A01Dashboard() {
           </div>
         </div>
 
-        {/* Recent proofs — card style like student profile but compact */}
-        {recentProofs.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
-              <BookOpen className="h-4 w-4" />
-              Poslední důkazy o učení
-            </h2>
-            <div className="space-y-2">
-              {recentProofs.map((proof) => {
-                const firstStudentId = proof.proof_students?.[0]?.student_id;
-                const proofLink = firstStudentId
-                  ? (proof.type === "file" || proof.type === "camera")
-                    ? `/student-profiles/${firstStudentId}/proof-file/${proof.id}`
-                    : `/student-profiles/${firstStudentId}/proof/${proof.id}`
-                  : "#";
-                return (
-                  <Link
-                    key={proof.id}
-                    to={proofLink}
-                    className="block p-3 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-sm transition-all"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className="font-medium text-foreground text-sm truncate">{proof.title}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                          {proof.proof_students?.map((ps: any) => {
-                            const s = allStudents.find((st) => st.id === ps.student_id);
-                            return s ? getStudentDisplayName(s) : null;
-                          }).filter(Boolean).join(", ") || "—"}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant="outline" className="text-[10px] capitalize">{proofTypeLabels[proof.type] || proof.type}</Badge>
-                        <span className="text-xs text-muted-foreground">{proof.date}</span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Pending evaluations */}
         {Object.keys(pendingByGroup).length > 0 && (
