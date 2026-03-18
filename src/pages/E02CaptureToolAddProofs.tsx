@@ -244,6 +244,15 @@ export default function E02CaptureToolAddProofs() {
             <span className="text-xs text-muted-foreground">Poznámka</span>
           </button>
           <button
+            onClick={() => handleCapture("grade")}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent transition-colors ${
+              selectedStudents.length === 0 ? "opacity-40" : ""
+            }`}
+          >
+            <Star className="h-6 w-6 text-primary" />
+            <span className="text-xs text-muted-foreground">Známka</span>
+          </button>
+          <button
             onClick={() => handleCapture("photo")}
             className={`flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent transition-colors ${
               selectedStudents.length === 0 ? "opacity-40" : ""
