@@ -1,7 +1,6 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Link } from "react-router-dom";
-import { Users, School, Camera, FileText, Clock, BookOpen } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Users, School, Camera, FileText, Clock } from "lucide-react";
 import eliImage from "@/assets/Eli.svg";
 import { useProfile } from "@/hooks/useProfile";
 import { useQuery } from "@tanstack/react-query";
