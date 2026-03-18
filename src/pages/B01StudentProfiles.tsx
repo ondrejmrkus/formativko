@@ -152,13 +152,13 @@ export default function B01StudentProfiles() {
           onToggle={toggleFilter}
         />
 
-        <div className="hidden sm:grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
+        <div className="grid grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
           <button onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-foreground transition-colors text-left">
             Jméno
             {sortBy === "name" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
           </button>
-          <span className="w-20 text-center">Třída</span>
-          <button onClick={() => toggleSort("proofs")} className="w-20 flex items-center justify-center gap-1 hover:text-foreground transition-colors">
+          <span className="hidden sm:inline w-20 text-center">Třída</span>
+          <button onClick={() => toggleSort("proofs")} className="w-16 sm:w-20 flex items-center justify-center gap-1 hover:text-foreground transition-colors">
             Důkazy
             {sortBy === "proofs" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
           </button>
