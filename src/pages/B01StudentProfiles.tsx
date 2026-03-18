@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SearchBar } from "@/components/shared/SearchBar";
@@ -6,7 +6,7 @@ import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { useStudents, getStudentDisplayName } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
 import { useQuery } from "@tanstack/react-query";
@@ -19,6 +19,17 @@ export default function B01StudentProfiles() {
   const { data: classes = [] } = useClasses();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const [sortBy, setSortBy] = useState<"name" | "proofs">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const toggleSort = useCallback((col: "name" | "proofs") => {
+    if (sortBy === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(col);
+      setSortDir("asc");
+    }
+  }, [sortBy]);
 
   // Get all class_students mappings and proof counts in bulk
   const { data: classStudentMap = [] } = useQuery({
@@ -57,10 +68,16 @@ export default function B01StudentProfiles() {
     });
   };
 
+  const proofCountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const p of proofCounts) {
+      map[p.student_id] = (map[p.student_id] || 0) + 1;
+    }
+    return map;
+  }, [proofCounts]);
+
   const filteredStudents = useMemo(() => {
-    let result = [...students].sort((a, b) =>
-      a.last_name.localeCompare(b.last_name, "cs")
-    );
+    let result = [...students];
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -84,8 +101,15 @@ export default function B01StudentProfiles() {
       result = result.filter((s) => studentIdsInClasses.has(s.id));
     }
 
+    const dir = sortDir === "asc" ? 1 : -1;
+    if (sortBy === "name") {
+      result.sort((a, b) => a.last_name.localeCompare(b.last_name, "cs") * dir);
+    } else {
+      result.sort((a, b) => ((proofCountMap[a.id] || 0) - (proofCountMap[b.id] || 0)) * dir);
+    }
+
     return result;
-  }, [students, search, filters, classes, classStudentMap]);
+  }, [students, search, filters, classes, classStudentMap, sortBy, sortDir, proofCountMap]);
 
   const getStudentClassNames = (studentId: string) => {
     const cids = classStudentMap
@@ -94,9 +118,7 @@ export default function B01StudentProfiles() {
     return classes.filter((c) => cids.includes(c.id));
   };
 
-  const getProofCount = (studentId: string) => {
-    return proofCounts.filter((p) => p.student_id === studentId).length;
-  };
+  const getProofCount = (studentId: string) => proofCountMap[studentId] || 0;
 
   return (
     <AppLayout>
@@ -130,11 +152,16 @@ export default function B01StudentProfiles() {
           onToggle={toggleFilter}
         />
 
-
         <div className="hidden sm:grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
-          <span>Jméno</span>
+          <button onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-foreground transition-colors text-left">
+            Jméno
+            {sortBy === "name" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+          </button>
           <span className="w-20 text-center">Třída</span>
-          <span className="w-20 text-center">Důkazy</span>
+          <button onClick={() => toggleSort("proofs")} className="w-20 flex items-center justify-center gap-1 hover:text-foreground transition-colors">
+            Důkazy
+            {sortBy === "proofs" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+          </button>
         </div>
 
         {studentsLoading ? (
