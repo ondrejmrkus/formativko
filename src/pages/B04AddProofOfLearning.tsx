@@ -38,6 +38,7 @@ export default function B04AddProofOfLearning() {
   const [selectedType, setSelectedType] = useState<ProofType>("text");
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
+  const [studentGrades, setStudentGrades] = useState<Record<string, string>>({});
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [date, setDate] = useState<Date>(new Date());
   const [attachedStudentIds, setAttachedStudentIds] = useState<string[]>(id ? [id] : []);
@@ -45,6 +46,33 @@ export default function B04AddProofOfLearning() {
   const [studentSearch, setStudentSearch] = useState("");
 
   const handleSave = async () => {
+    if (selectedType === "grade") {
+      const studentsWithGrades = attachedStudentIds.filter((sid) => studentGrades[sid]);
+      if (studentsWithGrades.length === 0) {
+        toast({ title: "Přiřaďte alespoň jednu známku", variant: "destructive" });
+        return;
+      }
+      try {
+        const dateStr = date.toISOString().split("T")[0];
+        for (const sid of studentsWithGrades) {
+          const grade = studentGrades[sid];
+          await createProof.mutateAsync({
+            title: title.trim() || `Známka ${grade}`,
+            type: "grade",
+            note,
+            date: dateStr,
+            lessonId: selectedLessonId,
+            studentIds: [sid],
+          });
+        }
+        toast({ title: "Známky uloženy" });
+        navigate(`/student-profiles/${id}`);
+      } catch {
+        toast({ title: "Chyba při ukládání", variant: "destructive" });
+      }
+      return;
+    }
+
     if (!title.trim()) {
       toast({ title: "Zadejte název důkazu", variant: "destructive" });
       return;
@@ -135,14 +163,47 @@ export default function B04AddProofOfLearning() {
           )}
 
           {selectedType === "grade" && (
-            <div>
-              <label className="text-sm font-medium text-muted-foreground block mb-2">Známka a poznámka</label>
-              <Textarea
-                className="min-h-[120px] bg-card"
-                placeholder="Zapište známku a volitelný komentář..."
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-muted-foreground block">Známky</label>
+              {attachedStudentIds.map((sid) => {
+                const s = allStudents.find((st) => st.id === sid);
+                if (!s) return null;
+                const currentGrade = studentGrades[sid] || "";
+                return (
+                  <div key={sid} className="flex items-center gap-3">
+                    <span className="text-sm text-foreground min-w-[100px] truncate flex-shrink-0">
+                      {getStudentDisplayName(s)}
+                    </span>
+                    <div className="flex gap-1">
+                      {["1", "2", "3", "4", "5"].map((g) => (
+                        <button
+                          key={g}
+                          onClick={() => setStudentGrades((prev) => ({
+                            ...prev,
+                            [sid]: prev[sid] === g ? "" : g,
+                          }))}
+                          className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                            currentGrade === g
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="pt-2">
+                <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámka</label>
+                <Textarea
+                  className="min-h-[80px] bg-card"
+                  placeholder="Volitelná poznámka ke známkám..."
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+              </div>
             </div>
           )}
 
