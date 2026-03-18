@@ -11,7 +11,7 @@ import { getStudentShortName } from "@/hooks/useStudents";
 import { useCreateProof } from "@/hooks/useProofs";
 import E03CaptureToolSettings from "./E03CaptureToolSettings";
 
-type CaptureMode = null | "note" | "photo";
+type CaptureMode = null | "note" | "photo" | "grade";
 
 export default function E02CaptureToolAddProofs() {
   const { classId } = useParams<{ classId: string }>();
