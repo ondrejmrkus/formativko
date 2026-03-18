@@ -169,7 +169,7 @@ export default function E02CaptureToolAddProofs() {
                   : "border-border bg-card hover:border-primary/30"
               }`}
             >
-              <span className="text-sm font-medium text-foreground text-center leading-tight">
+              <span className="text-sm sm:text-base md:text-lg font-medium text-foreground text-center leading-tight">
                 {getStudentShortName(student)}
               </span>
               {count > 0 && (
