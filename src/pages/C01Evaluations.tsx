@@ -164,13 +164,13 @@ export default function C01Evaluations() {
                     {cls?.name || "—"}
                   </span>
                   <button
-                    onClick={() => {
-                      if (window.confirm("Opravdu chcete smazat toto hodnocení včetně všech konceptů?")) {
-                        deleteGroup.mutate(group.id, {
-                          onSuccess: () => toast({ title: "Hodnocení smazáno." }),
-                          onError: (e) => toast({ title: "Chyba při mazání", description: e.message, variant: "destructive" }),
-                        });
-                      }
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      deleteGroup.mutate(group.id, {
+                        onSuccess: () => toast({ title: "Hodnocení smazáno." }),
+                        onError: (err) => toast({ title: "Chyba při mazání", description: err.message, variant: "destructive" }),
+                      });
                     }}
                     className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                     title="Smazat hodnocení"
