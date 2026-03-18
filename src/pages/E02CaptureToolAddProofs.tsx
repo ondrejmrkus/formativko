@@ -24,6 +24,7 @@ export default function E02CaptureToolAddProofs() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [captureMode, setCaptureMode] = useState<CaptureMode>(null);
   const [noteText, setNoteText] = useState("");
+  const [studentGrades, setStudentGrades] = useState<Record<string, string>>({});
   const [proofCounts, setProofCounts] = useState<Record<string, number>>({});
   const [lessonOpen, setLessonOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
