@@ -1,0 +1,2 @@
+ALTER TABLE public.proofs_of_learning DROP CONSTRAINT proofs_of_learning_type_check;
+ALTER TABLE public.proofs_of_learning ADD CONSTRAINT proofs_of_learning_type_check CHECK (type IN ('text', 'voice', 'camera', 'file', 'grade'));
