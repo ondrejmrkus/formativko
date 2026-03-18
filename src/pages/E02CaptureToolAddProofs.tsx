@@ -222,11 +222,11 @@ export default function E02CaptureToolAddProofs() {
         })}
       </div>
 
-      {(captureMode === "note" || captureMode === "grade") && (
+      {captureMode === "note" && (
         <div className="border-t border-border bg-card p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">
-              {captureMode === "grade" ? "Známka" : "Poznámka"} pro {selectedStudents.length} žáků
+              Poznámka pro {selectedStudents.length} žáků
             </span>
             <button onClick={() => setCaptureMode(null)} className="p-1 hover:bg-accent rounded">
               <X className="h-4 w-4 text-muted-foreground" />
@@ -234,14 +234,69 @@ export default function E02CaptureToolAddProofs() {
           </div>
           <Textarea
             className="min-h-[80px] bg-background"
-            placeholder={captureMode === "grade" ? "Zapište známku a komentář..." : "Napište poznámku..."}
+            placeholder="Napište poznámku..."
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             autoFocus
           />
-          <Button className="w-full gap-1" onClick={() => handleSaveNote(captureMode === "grade" ? "grade" : "text")} disabled={createProof.isPending}>
+          <Button className="w-full gap-1" onClick={handleSaveNote} disabled={createProof.isPending}>
             <Check className="h-4 w-4" />
-            {createProof.isPending ? "Ukládání…" : captureMode === "grade" ? "Uložit známku" : "Uložit poznámku"}
+            {createProof.isPending ? "Ukládání…" : "Uložit poznámku"}
+          </Button>
+        </div>
+      )}
+
+      {captureMode === "grade" && (
+        <div className="border-t border-border bg-card p-3 space-y-3 max-h-[60vh] overflow-auto">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-foreground">
+              Známky pro {selectedStudents.length} žáků
+            </span>
+            <button onClick={() => { setCaptureMode(null); setStudentGrades({}); }} className="p-1 hover:bg-accent rounded">
+              <X className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
+          <div className="space-y-2">
+            {selectedStudents.map((sid) => {
+              const s = students.find((st: any) => st.id === sid);
+              if (!s) return null;
+              const currentGrade = studentGrades[sid] || "";
+              return (
+                <div key={sid} className="flex items-center gap-2">
+                  <span className="text-sm text-foreground min-w-[80px] truncate flex-shrink-0">
+                    {getStudentShortName(s)}
+                  </span>
+                  <div className="flex gap-1">
+                    {["1", "2", "3", "4", "5"].map((g) => (
+                      <button
+                        key={g}
+                        onClick={() => setStudentGrades((prev) => ({
+                          ...prev,
+                          [sid]: prev[sid] === g ? "" : g,
+                        }))}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
+                          currentGrade === g
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "bg-muted text-muted-foreground hover:bg-accent"
+                        }`}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <Textarea
+            className="min-h-[60px] bg-background"
+            placeholder="Volitelná poznámka ke známkám..."
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+          />
+          <Button className="w-full gap-1" onClick={handleSaveGrades} disabled={createProof.isPending}>
+            <Check className="h-4 w-4" />
+            {createProof.isPending ? "Ukládání…" : "Uložit známky"}
           </Button>
         </div>
       )}
