@@ -38,6 +38,7 @@ export default function B04AddProofOfLearning() {
   const [selectedType, setSelectedType] = useState<ProofType>("text");
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
+  const [studentGrades, setStudentGrades] = useState<Record<string, string>>({});
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [date, setDate] = useState<Date>(new Date());
   const [attachedStudentIds, setAttachedStudentIds] = useState<string[]>(id ? [id] : []);
