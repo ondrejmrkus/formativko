@@ -6,6 +6,16 @@ import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Plus, Trash2, Check, Clock, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useEvaluationGroups, useDeleteEvaluationGroup } from "@/hooks/useEvaluations";
 import { useClasses } from "@/hooks/useClasses";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +31,7 @@ export default function C01Evaluations() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   // Fetch all evaluations to compute per-group stats
   const { data: allEvaluations = [] } = useQuery({
@@ -167,10 +178,7 @@ export default function C01Evaluations() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      deleteGroup.mutate(group.id, {
-                        onSuccess: () => toast({ title: "Hodnocení smazáno." }),
-                        onError: (err) => toast({ title: "Chyba při mazání", description: err.message, variant: "destructive" }),
-                      });
+                      setDeleteTarget({ id: group.id, name: group.name });
                     }}
                     className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                     title="Smazat hodnocení"
@@ -182,6 +190,35 @@ export default function C01Evaluations() {
             })}
           </div>
         )}
+
+
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Smazat hodnocení</AlertDialogTitle>
+              <AlertDialogDescription>
+                Opravdu chcete smazat hodnocení „{deleteTarget?.name}"? Tato akce je nevratná a smaže všechny koncepty v tomto hodnocení.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Zrušit</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  if (deleteTarget) {
+                    deleteGroup.mutate(deleteTarget.id, {
+                      onSuccess: () => toast({ title: "Hodnocení smazáno." }),
+                      onError: (err) => toast({ title: "Chyba při mazání", description: err.message, variant: "destructive" }),
+                    });
+                  }
+                  setDeleteTarget(null);
+                }}
+              >
+                Smazat
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppLayout>
   );
