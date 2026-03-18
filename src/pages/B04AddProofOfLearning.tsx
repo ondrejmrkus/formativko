@@ -13,15 +13,16 @@ import {
 } from "@/components/ui/popover";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Mic, Camera, Upload, FileText, Plus } from "lucide-react";
+import { Mic, Camera, Upload, FileText, Plus, Star } from "lucide-react";
 import { useStudent, useStudents, getStudentDisplayName } from "@/hooks/useStudents";
 import { useCreateProof } from "@/hooks/useProofs";
 import { useToast } from "@/hooks/use-toast";
 
-type ProofType = "text" | "voice" | "camera" | "file";
+type ProofType = "text" | "voice" | "camera" | "file" | "grade";
 
 const proofTypes: { type: ProofType; label: string; icon: React.ElementType }[] = [
   { type: "text", label: "Textová poznámka", icon: FileText },
+  { type: "grade", label: "Známka", icon: Star },
   { type: "voice", label: "Hlasová poznámka", icon: Mic },
   { type: "camera", label: "Vyfotit obrázek", icon: Camera },
   { type: "file", label: "Nahrát soubor", icon: Upload },
@@ -103,7 +104,7 @@ export default function B04AddProofOfLearning() {
 
         <h1 className="text-2xl font-bold mb-6">Přidat důkaz o učení</h1>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6">
           {proofTypes.map((pt) => (
             <button
               key={pt.type}
@@ -127,6 +128,18 @@ export default function B04AddProofOfLearning() {
               <Textarea
                 className="min-h-[120px] bg-card"
                 placeholder="Napište poznámku..."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </div>
+          )}
+
+          {selectedType === "grade" && (
+            <div>
+              <label className="text-sm font-medium text-muted-foreground block mb-2">Známka a poznámka</label>
+              <Textarea
+                className="min-h-[120px] bg-card"
+                placeholder="Zapište známku a volitelný komentář..."
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />

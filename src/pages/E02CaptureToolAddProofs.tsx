@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Pencil, Camera, Settings, X, Check } from "lucide-react";
+import { Pencil, Camera, Settings, X, Check, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +11,7 @@ import { getStudentShortName } from "@/hooks/useStudents";
 import { useCreateProof } from "@/hooks/useProofs";
 import E03CaptureToolSettings from "./E03CaptureToolSettings";
 
-type CaptureMode = null | "note" | "photo";
+type CaptureMode = null | "note" | "photo" | "grade";
 
 export default function E02CaptureToolAddProofs() {
   const { classId } = useParams<{ classId: string }>();
@@ -55,16 +55,16 @@ export default function E02CaptureToolAddProofs() {
     setCaptureMode(mode);
   };
 
-  const handleSaveNote = async () => {
+  const handleSaveNote = async (type: "text" | "grade" = "text") => {
     if (!noteText.trim()) {
-      toast({ title: "Napište poznámku", variant: "destructive" });
+      toast({ title: type === "grade" ? "Napište známku" : "Napište poznámku", variant: "destructive" });
       return;
     }
     try {
       const today = new Date().toISOString().split("T")[0];
       await createProof.mutateAsync({
-        title: `Poznámka ${today}`,
-        type: "text",
+        title: type === "grade" ? `Známka ${today}` : `Poznámka ${today}`,
+        type,
         note: noteText,
         date: today,
         lessonId: selectedLesson,
@@ -75,7 +75,7 @@ export default function E02CaptureToolAddProofs() {
         selectedStudents.forEach((id) => { updated[id] = (updated[id] || 0) + 1; });
         return updated;
       });
-      toast({ title: `Poznámka uložena pro ${selectedStudents.length} žáků` });
+      toast({ title: `${type === "grade" ? "Známka" : "Poznámka"} uložena pro ${selectedStudents.length} žáků` });
       setNoteText("");
       setCaptureMode(null);
       setSelectedStudents([]);
@@ -187,11 +187,11 @@ export default function E02CaptureToolAddProofs() {
         })}
       </div>
 
-      {captureMode === "note" && (
+      {(captureMode === "note" || captureMode === "grade") && (
         <div className="border-t border-border bg-card p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">
-              Poznámka pro {selectedStudents.length} žáků
+              {captureMode === "grade" ? "Známka" : "Poznámka"} pro {selectedStudents.length} žáků
             </span>
             <button onClick={() => setCaptureMode(null)} className="p-1 hover:bg-accent rounded">
               <X className="h-4 w-4 text-muted-foreground" />
@@ -199,14 +199,14 @@ export default function E02CaptureToolAddProofs() {
           </div>
           <Textarea
             className="min-h-[80px] bg-background"
-            placeholder="Napište poznámku..."
+            placeholder={captureMode === "grade" ? "Zapište známku a komentář..." : "Napište poznámku..."}
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             autoFocus
           />
-          <Button className="w-full gap-1" onClick={handleSaveNote} disabled={createProof.isPending}>
+          <Button className="w-full gap-1" onClick={() => handleSaveNote(captureMode === "grade" ? "grade" : "text")} disabled={createProof.isPending}>
             <Check className="h-4 w-4" />
-            {createProof.isPending ? "Ukládání…" : "Uložit poznámku"}
+            {createProof.isPending ? "Ukládání…" : captureMode === "grade" ? "Uložit známku" : "Uložit poznámku"}
           </Button>
         </div>
       )}
@@ -242,6 +242,15 @@ export default function E02CaptureToolAddProofs() {
           >
             <Pencil className="h-6 w-6 text-primary" />
             <span className="text-xs text-muted-foreground">Poznámka</span>
+          </button>
+          <button
+            onClick={() => handleCapture("grade")}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-accent transition-colors ${
+              selectedStudents.length === 0 ? "opacity-40" : ""
+            }`}
+          >
+            <Star className="h-6 w-6 text-primary" />
+            <span className="text-xs text-muted-foreground">Známka</span>
           </button>
           <button
             onClick={() => handleCapture("photo")}
