@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Pencil, Camera, Settings, X, Check, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { useClasses, useClassStudents } from "@/hooks/useClasses";
 import { useLessons } from "@/hooks/useLessons";
 import { getStudentShortName } from "@/hooks/useStudents";
 import { useCreateProof } from "@/hooks/useProofs";
+import { supabase } from "@/integrations/supabase/client";
 import E03CaptureToolSettings from "./E03CaptureToolSettings";
 
 type CaptureMode = null | "note" | "photo" | "grade";
