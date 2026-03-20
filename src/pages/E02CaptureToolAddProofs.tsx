@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Pencil, Camera, Settings, X, Check, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { useClasses, useClassStudents } from "@/hooks/useClasses";
 import { useLessons } from "@/hooks/useLessons";
 import { getStudentShortName } from "@/hooks/useStudents";
 import { useCreateProof } from "@/hooks/useProofs";
+import { supabase } from "@/integrations/supabase/client";
 import E03CaptureToolSettings from "./E03CaptureToolSettings";
 
 type CaptureMode = null | "note" | "photo" | "grade";
@@ -26,6 +27,10 @@ export default function E02CaptureToolAddProofs() {
   const [noteText, setNoteText] = useState("");
   const [studentGrades, setStudentGrades] = useState<Record<string, string>>({});
   const [proofCounts, setProofCounts] = useState<Record<string, number>>({});
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [lessonOpen, setLessonOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
 
@@ -119,15 +124,57 @@ export default function E02CaptureToolAddProofs() {
     }
   };
 
-  const handleSavePhoto = () => {
-    setProofCounts((prev) => {
-      const updated = { ...prev };
-      selectedStudents.forEach((id) => { updated[id] = (updated[id] || 0) + 1; });
-      return updated;
-    });
-    toast({ title: `Foto uloženo pro ${selectedStudents.length} žáků` });
-    setCaptureMode(null);
-    setSelectedStudents([]);
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const handleSavePhoto = async () => {
+    if (!photoFile) {
+      toast({ title: "Nejdříve vyfoťte nebo vyberte obrázek", variant: "destructive" });
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const ext = photoFile.name.split(".").pop() || "jpg";
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("proof-files")
+        .upload(path, photoFile);
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("proof-files").getPublicUrl(path);
+
+      await createProof.mutateAsync({
+        title: `Foto ${today}`,
+        type: "camera",
+        note: noteText || "",
+        date: today,
+        lessonId: selectedLesson,
+        studentIds: selectedStudents,
+        fileName: photoFile.name,
+        fileUrl: urlData.publicUrl,
+      });
+
+      setProofCounts((prev) => {
+        const updated = { ...prev };
+        selectedStudents.forEach((id) => { updated[id] = (updated[id] || 0) + 1; });
+        return updated;
+      });
+      toast({ title: `Foto uloženo pro ${selectedStudents.length} žáků` });
+      setNoteText("");
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      setCaptureMode(null);
+      setSelectedStudents([]);
+    } catch {
+      toast({ title: "Chyba při nahrávání", variant: "destructive" });
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const selectedLessonObj = classLessons.find((l) => l.id === selectedLesson);
@@ -307,18 +354,47 @@ export default function E02CaptureToolAddProofs() {
             <span className="text-sm font-medium text-foreground">
               Foto pro {selectedStudents.length} žáků
             </span>
-            <button onClick={() => setCaptureMode(null)} className="p-1 hover:bg-accent rounded">
+            <button onClick={() => { setCaptureMode(null); setPhotoFile(null); setPhotoPreview(null); setNoteText(""); }} className="p-1 hover:bg-accent rounded">
               <X className="h-4 w-4 text-muted-foreground" />
             </button>
           </div>
-          <div className="border-2 border-dashed border-border rounded-xl p-6 text-center bg-background">
-            <Camera className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground mb-3">Klepněte pro vyfocení</p>
-            <Button variant="outline" className="gap-1" onClick={handleSavePhoto}>
-              <Check className="h-4 w-4" />
-              Simulovat foto
-            </Button>
-          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleFileSelected}
+          />
+          {photoPreview ? (
+            <div className="relative">
+              <img src={photoPreview} alt="Náhled" className="w-full max-h-48 object-contain rounded-xl border border-border" />
+              <button
+                onClick={() => { setPhotoFile(null); setPhotoPreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                className="absolute top-2 right-2 bg-background/80 rounded-full p-1"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full border-2 border-dashed border-border rounded-xl p-6 text-center bg-background hover:bg-accent/50 transition-colors"
+            >
+              <Camera className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Klepněte pro vyfocení nebo výběr obrázku</p>
+            </button>
+          )}
+          <Textarea
+            className="min-h-[60px] bg-background"
+            placeholder="Volitelná poznámka k fotce..."
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+          />
+          <Button className="w-full gap-1" onClick={handleSavePhoto} disabled={uploadingPhoto || !photoFile}>
+            <Check className="h-4 w-4" />
+            {uploadingPhoto ? "Nahrávání…" : "Uložit foto"}
+          </Button>
         </div>
       )}
 
