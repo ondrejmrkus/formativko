@@ -354,18 +354,47 @@ export default function E02CaptureToolAddProofs() {
             <span className="text-sm font-medium text-foreground">
               Foto pro {selectedStudents.length} žáků
             </span>
-            <button onClick={() => setCaptureMode(null)} className="p-1 hover:bg-accent rounded">
+            <button onClick={() => { setCaptureMode(null); setPhotoFile(null); setPhotoPreview(null); setNoteText(""); }} className="p-1 hover:bg-accent rounded">
               <X className="h-4 w-4 text-muted-foreground" />
             </button>
           </div>
-          <div className="border-2 border-dashed border-border rounded-xl p-6 text-center bg-background">
-            <Camera className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground mb-3">Klepněte pro vyfocení</p>
-            <Button variant="outline" className="gap-1" onClick={handleSavePhoto}>
-              <Check className="h-4 w-4" />
-              Simulovat foto
-            </Button>
-          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleFileSelected}
+          />
+          {photoPreview ? (
+            <div className="relative">
+              <img src={photoPreview} alt="Náhled" className="w-full max-h-48 object-contain rounded-xl border border-border" />
+              <button
+                onClick={() => { setPhotoFile(null); setPhotoPreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                className="absolute top-2 right-2 bg-background/80 rounded-full p-1"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full border-2 border-dashed border-border rounded-xl p-6 text-center bg-background hover:bg-accent/50 transition-colors"
+            >
+              <Camera className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Klepněte pro vyfocení nebo výběr obrázku</p>
+            </button>
+          )}
+          <Textarea
+            className="min-h-[60px] bg-background"
+            placeholder="Volitelná poznámka k fotce..."
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+          />
+          <Button className="w-full gap-1" onClick={handleSavePhoto} disabled={uploadingPhoto || !photoFile}>
+            <Check className="h-4 w-4" />
+            {uploadingPhoto ? "Nahrávání…" : "Uložit foto"}
+          </Button>
         </div>
       )}
 
