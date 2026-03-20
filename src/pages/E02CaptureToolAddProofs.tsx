@@ -27,6 +27,10 @@ export default function E02CaptureToolAddProofs() {
   const [noteText, setNoteText] = useState("");
   const [studentGrades, setStudentGrades] = useState<Record<string, string>>({});
   const [proofCounts, setProofCounts] = useState<Record<string, number>>({});
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [lessonOpen, setLessonOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
 
