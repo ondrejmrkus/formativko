@@ -124,15 +124,57 @@ export default function E02CaptureToolAddProofs() {
     }
   };
 
-  const handleSavePhoto = () => {
-    setProofCounts((prev) => {
-      const updated = { ...prev };
-      selectedStudents.forEach((id) => { updated[id] = (updated[id] || 0) + 1; });
-      return updated;
-    });
-    toast({ title: `Foto uloženo pro ${selectedStudents.length} žáků` });
-    setCaptureMode(null);
-    setSelectedStudents([]);
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const handleSavePhoto = async () => {
+    if (!photoFile) {
+      toast({ title: "Nejdříve vyfoťte nebo vyberte obrázek", variant: "destructive" });
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const ext = photoFile.name.split(".").pop() || "jpg";
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("proof-files")
+        .upload(path, photoFile);
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("proof-files").getPublicUrl(path);
+
+      await createProof.mutateAsync({
+        title: `Foto ${today}`,
+        type: "camera",
+        note: noteText || "",
+        date: today,
+        lessonId: selectedLesson,
+        studentIds: selectedStudents,
+        fileName: photoFile.name,
+        fileUrl: urlData.publicUrl,
+      });
+
+      setProofCounts((prev) => {
+        const updated = { ...prev };
+        selectedStudents.forEach((id) => { updated[id] = (updated[id] || 0) + 1; });
+        return updated;
+      });
+      toast({ title: `Foto uloženo pro ${selectedStudents.length} žáků` });
+      setNoteText("");
+      setPhotoFile(null);
+      setPhotoPreview(null);
+      setCaptureMode(null);
+      setSelectedStudents([]);
+    } catch {
+      toast({ title: "Chyba při nahrávání", variant: "destructive" });
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const selectedLessonObj = classLessons.find((l) => l.id === selectedLesson);
