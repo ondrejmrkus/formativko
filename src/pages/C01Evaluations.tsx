@@ -120,6 +120,7 @@ export default function C01Evaluations() {
           ]}
           selectedValues={filters}
           onToggle={toggleFilter}
+          addHref={{ "Třída": "/create-class" }}
         />
 
         <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">

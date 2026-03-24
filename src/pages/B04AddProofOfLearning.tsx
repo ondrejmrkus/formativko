@@ -85,6 +85,7 @@ export default function B04AddProofOfLearning() {
         date: date.toISOString().split("T")[0],
         lessonId: selectedLessonId,
         studentIds: attachedStudentIds,
+        skillIds: selectedSkillIds,
       });
       toast({ title: "Důkaz o učení uložen" });
       navigate(`/student-profiles/${id}`);

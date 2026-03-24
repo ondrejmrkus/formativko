@@ -23,12 +23,14 @@ export function useProofsForStudent(studentId: string | undefined) {
   return useQuery({
     queryKey: ["proofs", "student", studentId],
     queryFn: async () => {
+      // Fetch proofs
       const { data, error } = await supabase
         .from("proof_students")
         .select("proof_id, proofs_of_learning(*)")
         .eq("student_id", studentId!);
       if (error) throw error;
-      return data.map((r: any) => r.proofs_of_learning).filter(Boolean) as ProofOfLearning[];
+      const proofs = data.map((r: any) => r.proofs_of_learning).filter(Boolean) as ProofOfLearning[];
+      return proofs;
     },
     enabled: !!user && !!studentId,
   });
@@ -87,6 +89,7 @@ export function useCreateProof() {
         const { error: err2 } = await supabase.from("proof_students").insert(rows);
         if (err2) throw err2;
       }
+
       return proof;
     },
     onSuccess: () => {

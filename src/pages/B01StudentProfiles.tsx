@@ -150,6 +150,7 @@ export default function B01StudentProfiles() {
           ]}
           selectedValues={filters}
           onToggle={toggleFilter}
+          addHref={{ "Třída": "/create-class" }}
         />
 
         <div className="grid grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
@@ -183,8 +184,11 @@ export default function B01StudentProfiles() {
                   to={`/student-profiles/${student.id}`}
                   className="grid grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
                 >
-                  <span className="font-medium text-foreground truncate">
+                  <span className="font-medium text-foreground truncate flex items-center gap-2">
                     {getStudentDisplayName(student)}
+                    {student.svp && (
+                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0 shrink-0">SVP</Badge>
+                    )}
                   </span>
                   <div className="hidden sm:flex gap-1">
                     {studentClasses.map((c) => (

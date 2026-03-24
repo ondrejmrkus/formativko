@@ -6,8 +6,9 @@ import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Link, useNavigate } from "react-router-dom";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Plus } from "lucide-react";
 import { useStudent, useUpdateStudent, useDeleteStudent, getStudentDisplayName } from "@/hooks/useStudents";
 import { useStudentClasses } from "@/hooks/useClasses";
 import { useProofsForStudent, useDeleteProof } from "@/hooks/useProofs";
@@ -31,7 +32,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
 
 export default function B02StudentProfileDetail() {
   const { id } = useParams<{ id: string }>();
@@ -49,6 +49,8 @@ export default function B02StudentProfileDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [editFirst, setEditFirst] = useState("");
   const [editLast, setEditLast] = useState("");
+  const [editSvp, setEditSvp] = useState(false);
+  const [editNotes, setEditNotes] = useState("");
 
   const toggleFilter = (group: string, option: string) => {
     setFilters((prev) => {
@@ -83,6 +85,8 @@ export default function B02StudentProfileDetail() {
     if (student) {
       setEditFirst(student.first_name);
       setEditLast(student.last_name);
+      setEditSvp(student.svp ?? false);
+      setEditNotes(student.notes ?? "");
       setEditOpen(true);
     }
   };
@@ -90,7 +94,13 @@ export default function B02StudentProfileDetail() {
   const handleEditSave = async () => {
     if (!id || !editFirst.trim() || !editLast.trim()) return;
     try {
-      await updateStudent.mutateAsync({ id, first_name: editFirst.trim(), last_name: editLast.trim() });
+      await updateStudent.mutateAsync({
+        id,
+        first_name: editFirst.trim(),
+        last_name: editLast.trim(),
+        svp: editSvp,
+        notes: editNotes,
+      });
       toast({ title: "Profil žáka upraven" });
       setEditOpen(false);
     } catch {
@@ -133,8 +143,11 @@ export default function B02StudentProfileDetail() {
           ]}
         />
 
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-6 flex-wrap">
           <h1 className="text-2xl font-bold">{getStudentDisplayName(student)}</h1>
+          {student.svp && (
+            <Badge variant="destructive" className="text-xs">SVP</Badge>
+          )}
           {studentClasses.map((c) => (
             <Badge key={c.id} variant="secondary">{c.name}</Badge>
           ))}
@@ -169,11 +182,31 @@ export default function B02StudentProfileDetail() {
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Upravit jméno žáka</DialogTitle>
+              <DialogTitle>Upravit profil žáka</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <Input placeholder="Jméno" value={editFirst} onChange={(e) => setEditFirst(e.target.value)} />
               <Input placeholder="Příjmení" value={editLast} onChange={(e) => setEditLast(e.target.value)} />
+              <div>
+                <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámky k žákovi</label>
+                <Textarea
+                  placeholder="Zájmy, motivace, komunikační preference…"
+                  className="min-h-[80px] bg-card"
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                />
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <div
+                  onClick={() => setEditSvp((v) => !v)}
+                  className={`w-10 h-6 rounded-full transition-colors relative ${editSvp ? "bg-destructive" : "bg-muted"}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${editSvp ? "translate-x-5" : "translate-x-1"}`} />
+                </div>
+                <span className="text-sm font-medium text-foreground">
+                  Žák se speciálními vzdělávacími potřebami (SVP)
+                </span>
+              </label>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditOpen(false)}>Zrušit</Button>
@@ -181,6 +214,12 @@ export default function B02StudentProfileDetail() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {student.notes && (
+          <p className="text-sm text-muted-foreground mb-4 p-3 rounded-xl bg-muted/50 border border-border">
+            {student.notes}
+          </p>
+        )}
 
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1">
@@ -221,7 +260,7 @@ export default function B02StudentProfileDetail() {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-foreground truncate">{proof.title}</h3>
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{proof.note}</p>
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <span className="text-xs text-muted-foreground">{proof.date}</span>
                         <Badge variant="outline" className="text-xs capitalize">{proof.type}</Badge>
                       </div>

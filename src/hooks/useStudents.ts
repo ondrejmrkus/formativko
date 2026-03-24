@@ -7,6 +7,8 @@ export interface Student {
   first_name: string;
   last_name: string;
   teacher_id: string;
+  svp: boolean;
+  notes: string;
 }
 
 export function useStudents() {
@@ -59,10 +61,10 @@ export function useCreateStudents() {
 export function useUpdateStudent() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, first_name, last_name }: { id: string; first_name: string; last_name: string }) => {
+    mutationFn: async ({ id, first_name, last_name, svp, notes }: { id: string; first_name: string; last_name: string; svp?: boolean; notes?: string }) => {
       const { error } = await supabase
         .from("students")
-        .update({ first_name, last_name })
+        .update({ first_name, last_name, svp: svp ?? false, notes: notes ?? "" })
         .eq("id", id);
       if (error) throw error;
     },
