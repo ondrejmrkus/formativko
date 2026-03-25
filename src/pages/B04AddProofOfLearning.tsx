@@ -16,6 +16,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Mic, Camera, Upload, FileText, Plus, Star } from "lucide-react";
 import { useStudent, useStudents, getStudentDisplayName } from "@/hooks/useStudents";
 import { useCreateProof } from "@/hooks/useProofs";
+import { useStudentClasses } from "@/hooks/useClasses";
+import { useGoalsForClass, type EducationalGoal } from "@/hooks/useGoals";
 import { useToast } from "@/hooks/use-toast";
 
 type ProofType = "text" | "voice" | "camera" | "file" | "grade";
@@ -44,6 +46,8 @@ export default function B04AddProofOfLearning() {
   const [attachedStudentIds, setAttachedStudentIds] = useState<string[]>(id ? [id] : []);
   const [studentSearchOpen, setStudentSearchOpen] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
+  const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
+  const [goalSearchOpen, setGoalSearchOpen] = useState(false);
 
   const handleSave = async () => {
     if (selectedType === "grade") {
@@ -85,7 +89,7 @@ export default function B04AddProofOfLearning() {
         date: date.toISOString().split("T")[0],
         lessonId: selectedLessonId,
         studentIds: attachedStudentIds,
-        skillIds: selectedSkillIds,
+        goalIds: selectedGoalIds,
       });
       toast({ title: "Důkaz o učení uložen" });
       navigate(`/student-profiles/${id}`);
@@ -105,6 +109,20 @@ export default function B04AddProofOfLearning() {
     }
     setStudentSearchOpen(false);
     setStudentSearch("");
+  };
+
+  // Fetch goals for the primary student's classes
+  const { data: studentClasses = [] } = useStudentClasses(id);
+  const classIds = studentClasses.map((c) => c.id);
+  // Fetch goals for all classes — use first class as primary, query all
+  const { data: classGoals = [] } = useGoalsForClass(classIds[0]);
+
+  const availableGoals = classGoals.filter((g) => !selectedGoalIds.includes(g.id));
+
+  const toggleGoal = (goalId: string) => {
+    setSelectedGoalIds((prev) =>
+      prev.includes(goalId) ? prev.filter((id) => id !== goalId) : [...prev, goalId]
+    );
   };
 
   const availableStudents = allStudents
@@ -305,6 +323,61 @@ export default function B04AddProofOfLearning() {
               </Popover>
             </div>
           </div>
+
+          {/* Goals selector */}
+          {classGoals.length > 0 && (
+            <div>
+              <label className="text-sm font-medium text-muted-foreground block mb-2">Vzdělávací cíle (volitelné)</label>
+              <div className="flex flex-wrap gap-2">
+                {selectedGoalIds.map((gid) => {
+                  const g = classGoals.find((goal) => goal.id === gid);
+                  if (!g) return null;
+                  return (
+                    <button
+                      key={gid}
+                      onClick={() => toggleGoal(gid)}
+                      className="flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 border border-primary/30 text-sm text-primary"
+                    >
+                      {g.title}
+                      <span className="ml-1 text-xs">&times;</span>
+                    </button>
+                  );
+                })}
+                <Popover
+                  open={goalSearchOpen}
+                  onOpenChange={setGoalSearchOpen}
+                >
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-border text-sm text-muted-foreground hover:bg-accent transition-colors">
+                      <Plus className="h-3 w-3" />
+                      Přidat cíl
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-2" align="start">
+                    <div className="max-h-48 overflow-auto space-y-0.5">
+                      {availableGoals.length === 0 ? (
+                        <p className="text-sm text-muted-foreground px-2 py-1">Žádné další cíle</p>
+                      ) : (
+                        availableGoals.map((g) => (
+                          <button
+                            key={g.id}
+                            onClick={() => {
+                              toggleGoal(g.id);
+                              setGoalSearchOpen(false);
+                            }}
+                            className="w-full text-left px-2 py-1.5 rounded text-sm hover:bg-accent text-foreground transition-colors"
+                          >
+                            <span className="font-medium">{g.title}</span>
+                            {g.subjects?.name && <span className="text-xs text-muted-foreground ml-2">{g.subjects.name}</span>}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          )}
 
           {selectedType !== "text" && (
             <div>

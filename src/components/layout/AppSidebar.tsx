@@ -1,4 +1,4 @@
-import { Home, Users, FileText, BookOpen, LogOut, GraduationCap } from "lucide-react";
+import { Home, Users, FileText, BookOpen, LogOut, GraduationCap, Target, Book, Layers } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
@@ -17,9 +17,12 @@ import {
 
 const navItems = [
   { title: "Pomocník", url: "/", icon: Home },
+  { title: "Kurzy", url: "/courses", icon: Layers },
   { title: "Žáci", url: "/student-profiles", icon: Users },
   { title: "Třídy", url: "/classes", icon: GraduationCap },
   { title: "Hodnocení", url: "/evaluations", icon: FileText },
+  { title: "Předměty", url: "/subjects", icon: Book },
+  { title: "Cíle", url: "/goals", icon: Target },
   { title: "Lekce", url: "/lessons", icon: BookOpen },
 ];
 

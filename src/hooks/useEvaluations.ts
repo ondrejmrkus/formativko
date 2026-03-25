@@ -84,8 +84,8 @@ export function useCreateEvaluation() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ studentId, groupId, subject, period, text, status }: {
-      studentId: string; groupId: string; subject: string; period: string; text: string; status?: string;
+    mutationFn: async ({ studentId, groupId, subject, period, text, status, goalId }: {
+      studentId: string; groupId: string; subject: string; period: string; text: string; status?: string; goalId?: string | null;
     }) => {
       const { data, error } = await supabase
         .from("evaluations")
@@ -93,6 +93,7 @@ export function useCreateEvaluation() {
           student_id: studentId, group_id: groupId,
           subject, period, text,
           teacher_id: user!.id, status: status || "waiting",
+          goal_id: goalId || null,
         })
         .select()
         .single();

@@ -77,7 +77,7 @@ export function LessonLinkField({ lessonId, onLessonChange }: LessonLinkFieldPro
                   }`}
                 >
                   {lesson.title}
-                  <span className="text-xs text-muted-foreground ml-1">· {lesson.subject}</span>
+                  {lesson.subjects?.name && <span className="text-xs text-muted-foreground ml-1">· {lesson.subjects.name}</span>}
                 </button>
               ))
             )}

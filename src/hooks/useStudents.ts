@@ -9,6 +9,10 @@ export interface Student {
   teacher_id: string;
   svp: boolean;
   notes: string;
+  interests: string;
+  communication_preferences: string;
+  learning_styles: string;
+  svp_details: string;
 }
 
 export function useStudents() {
@@ -61,10 +65,29 @@ export function useCreateStudents() {
 export function useUpdateStudent() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, first_name, last_name, svp, notes }: { id: string; first_name: string; last_name: string; svp?: boolean; notes?: string }) => {
+    mutationFn: async ({ id, first_name, last_name, svp, notes, interests, communication_preferences, learning_styles, svp_details }: {
+      id: string;
+      first_name: string;
+      last_name: string;
+      svp?: boolean;
+      notes?: string;
+      interests?: string;
+      communication_preferences?: string;
+      learning_styles?: string;
+      svp_details?: string;
+    }) => {
       const { error } = await supabase
         .from("students")
-        .update({ first_name, last_name, svp: svp ?? false, notes: notes ?? "" })
+        .update({
+          first_name,
+          last_name,
+          svp: svp ?? false,
+          notes: notes ?? "",
+          interests: interests ?? "",
+          communication_preferences: communication_preferences ?? "",
+          learning_styles: learning_styles ?? "",
+          svp_details: svp_details ?? "",
+        })
         .eq("id", id);
       if (error) throw error;
     },

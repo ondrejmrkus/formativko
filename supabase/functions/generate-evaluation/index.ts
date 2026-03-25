@@ -22,19 +22,19 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await anonClient.auth.getUser(authHeader.replace("Bearer ", ""));
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { studentId, evalType, dateFrom, dateTo, preferences } = await req.json();
+    const { studentId, evalType, dateFrom, dateTo, preferences, goalId } = await req.json();
 
     // Fetch student info
     const { data: student } = await supabase
       .from("students")
-      .select("first_name, last_name")
+      .select("first_name, last_name, svp, interests, communication_preferences, learning_styles, svp_details, notes")
       .eq("id", studentId)
       .eq("teacher_id", user.id)
       .single();
     if (!student) throw new Error("Student not found");
 
     // Fetch proofs for this student in date range
-    let proofsQuery = supabase
+    const proofsQuery = supabase
       .from("proof_students")
       .select("proof_id, proofs_of_learning(title, type, date, note)")
       .eq("student_id", studentId);
@@ -57,6 +57,34 @@ serve(async (req) => {
       });
     }
 
+    // Fetch goal + criteria if goalId provided
+    let goalSection = "";
+    if (goalId) {
+      const { data: goal } = await supabase
+        .from("educational_goals")
+        .select("title, description")
+        .eq("id", goalId)
+        .single();
+
+      if (goal) {
+        const { data: criteria } = await supabase
+          .from("evaluation_criteria")
+          .select("description, level_descriptors, sort_order")
+          .eq("goal_id", goalId)
+          .order("sort_order");
+
+        const criteriaLines = (criteria || []).map((c: any) => {
+          const levels = (c.level_descriptors || [])
+            .filter((ld: any) => ld.level)
+            .map((ld: any) => `${ld.level}: ${ld.description || "—"}`)
+            .join(" | ");
+          return `- ${c.description}${levels ? `\n  Úrovně: ${levels}` : ""}`;
+        }).join("\n");
+
+        goalSection = `\nVzdělávací cíl: ${goal.title}${goal.description ? `\n${goal.description}` : ""}${criteriaLines ? `\n\nKritéria hodnocení:\n${criteriaLines}` : ""}\n`;
+      }
+    }
+
     const typeLabels: Record<string, string> = {
       prubezna: "průběžná zpětná vazba",
       tripartita: "hodnocení pro tripartitní schůzku",
@@ -66,12 +94,23 @@ serve(async (req) => {
 
     const proofsSummary = proofs.map((p: any) => `- ${p.title} (${p.type}, ${p.date}): ${p.note || "bez poznámky"}`).join("\n");
 
-    const systemPrompt = `Jsi zkušený český učitel, který píše slovní hodnocení žáků. Piš v češtině, vstřícně a konstruktivně. Zaměř se na konkrétní pozorování z důkazů o učení. Pokud není dostatek důkazů, napiš co nejlepší hodnocení z toho, co máš, a poznamenej, že by bylo vhodné doplnit více pozorování.${preferences ? `\n\nKRITICKÝ POKYN OD UČITELE (musíš ho striktně dodržet): ${preferences}` : ""}`;
+    const systemPrompt = `Jsi zkušený český učitel, který píše slovní hodnocení žáků. Piš v češtině, vstřícně a konstruktivně. Zaměř se na konkrétní pozorování z důkazů o učení. Pokud není dostatek důkazů, napiš co nejlepší hodnocení z toho, co máš, a poznamenej, že by bylo vhodné doplnit více pozorování. Pokud je k dispozici profil žáka, přizpůsob hodnocení jeho komunikačním preferencím a stylům učení.${goalSection ? " Pokud jsou poskytnuta kritéria hodnocení, strukturuj hodnocení podle nich a odkazuj na konkrétní úrovně." : ""}${preferences ? `\n\nKRITICKÝ POKYN OD UČITELE (musíš ho striktně dodržet): ${preferences}` : ""}`;
+
+    // Build student profile context from non-empty fields
+    const profileLines: string[] = [];
+    if (student.interests) profileLines.push(`- Zájmy a motivace: ${student.interests}`);
+    if (student.communication_preferences) profileLines.push(`- Komunikační preference: ${student.communication_preferences}`);
+    if (student.learning_styles) profileLines.push(`- Preferované styly učení: ${student.learning_styles}`);
+    if (student.svp && student.svp_details) profileLines.push(`- Speciální vzdělávací potřeby: ${student.svp_details}`);
+    if (student.notes) profileLines.push(`- Poznámky: ${student.notes}`);
+    const profileSection = profileLines.length > 0
+      ? `\nProfil žáka:\n${profileLines.join("\n")}\n`
+      : "";
 
     const userPrompt = `Napiš ${typeLabels[evalType] || "hodnocení"} pro žáka ${student.first_name} ${student.last_name}.
 
 Období: ${dateFrom || "neurčeno"} – ${dateTo || "neurčeno"}
-
+${profileSection}${goalSection}
 Důkazy o učení:
 ${proofsSummary}
 

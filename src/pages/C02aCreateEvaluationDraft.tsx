@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useClasses, useClassStudents } from "@/hooks/useClasses";
 import { useCreateEvaluationGroup, useCreateEvaluation } from "@/hooks/useEvaluations";
 import { getStudentDisplayName } from "@/hooks/useStudents";
+import { useGoalsForClass } from "@/hooks/useGoals";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Sparkles } from "lucide-react";
@@ -36,9 +37,11 @@ export default function C02aCreateEvaluationDraft() {
   const [dateTo, setDateTo] = useState(restored?.dateTo || "2026-03-17");
   const [preferences, setPreferences] = useState(restored?.preferences || "");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(restored?.selectedStudentId || null);
+  const [selectedGoalId, setSelectedGoalId] = useState<string | null>(restored?.selectedGoalId || null);
   const [generating, setGenerating] = useState(false);
 
   const { data: classStudents = [] } = useClassStudents(selectedClassId || undefined);
+  const { data: classGoals = [] } = useGoalsForClass(selectedClassId || undefined);
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
 
@@ -73,6 +76,7 @@ export default function C02aCreateEvaluationDraft() {
           dateFrom,
           dateTo,
           preferences: preferences.trim() || null,
+          goalId: selectedGoalId || null,
         },
       });
 
@@ -90,6 +94,7 @@ export default function C02aCreateEvaluationDraft() {
         period,
         text,
         status,
+        goalId: selectedGoalId,
       });
 
       // Navigate to C02b with all context
@@ -106,6 +111,7 @@ export default function C02aCreateEvaluationDraft() {
           selectedType,
           selectedClassId,
           selectedStudentId: student.id,
+          selectedGoalId,
           dateFrom,
           dateTo,
           preferences,
@@ -231,7 +237,42 @@ export default function C02aCreateEvaluationDraft() {
             </div>
           )}
 
-          {/* Step 5: Preferences */}
+          {/* Step 5: Goal (optional) */}
+          {selectedStudentId && classGoals.length > 0 && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
+                Vzdělávací cíl (volitelné)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedGoalId(null)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+                    selectedGoalId === null
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-card text-muted-foreground hover:border-primary/30"
+                  }`}
+                >
+                  Bez cíle
+                </button>
+                {classGoals.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => setSelectedGoalId(g.id)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+                      selectedGoalId === g.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/30"
+                    }`}
+                  >
+                    {g.title}
+                    {g.subjects?.name && <span className="text-xs ml-1 opacity-60">({g.subjects.name})</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 6: Preferences */}
           {selectedStudentId && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">

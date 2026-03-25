@@ -5,8 +5,10 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useLessons, type Lesson } from "@/hooks/useLessons";
 import { useClasses } from "@/hooks/useClasses";
+import { useSubjects } from "@/hooks/useSubjects";
 
 interface LessonSectionProps {
   title: string;
@@ -25,8 +27,9 @@ function LessonSection({ title, items, classes, showArrow = false, dimmed = fals
       </h2>
       <div className="space-y-2">
         {items.map((lesson) => (
-          <div
+          <Link
             key={lesson.id}
+            to={`/lessons/${lesson.id}`}
             className={`flex items-center justify-between p-3 rounded-xl border border-border bg-card ${dimmed ? "opacity-60" : "hover:border-primary/30 hover:shadow-sm cursor-pointer"} transition-all`}
           >
             <div>
@@ -36,13 +39,13 @@ function LessonSection({ title, items, classes, showArrow = false, dimmed = fals
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs text-muted-foreground">{classes.find(c => c.id === lesson.class_id)?.name}</span>
                 <span className="text-xs text-muted-foreground">·</span>
-                <span className="text-xs text-muted-foreground">{lesson.subject}</span>
+                {lesson.subjects?.name && <span className="text-xs text-muted-foreground">{lesson.subjects.name}</span>}
               </div>
             </div>
             {showArrow && (
               <ArrowRight className="h-4 w-4 text-muted-foreground" />
             )}
-          </div>
+          </Link>
         ))}
       </div>
     </div>
@@ -52,6 +55,7 @@ function LessonSection({ title, items, classes, showArrow = false, dimmed = fals
 export default function D01Lessons() {
   const { data: lessons = [], isLoading } = useLessons();
   const { data: classes = [] } = useClasses();
+  const { data: allSubjects = [] } = useSubjects();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
 
@@ -68,8 +72,8 @@ export default function D01Lessons() {
   };
 
   const subjects = useMemo(() => {
-    return [...new Set(lessons.map((l) => l.subject))];
-  }, [lessons]);
+    return allSubjects.map((s) => s.name).sort();
+  }, [allSubjects]);
 
   const filteredLessons = useMemo(() => {
     let result = [...lessons];
@@ -89,7 +93,7 @@ export default function D01Lessons() {
 
     const selectedSubjects = filters["Předmět"] || [];
     if (selectedSubjects.length > 0) {
-      result = result.filter((l) => selectedSubjects.includes(l.subject));
+      result = result.filter((l) => selectedSubjects.includes(l.subjects?.name || ""));
     }
 
     return result;
@@ -111,9 +115,11 @@ export default function D01Lessons() {
 
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">Lekce</h1>
-          <Button className="gap-1">
-            <Plus className="h-4 w-4" />
-            Vytvořit lekci
+          <Button asChild className="gap-1">
+            <Link to="/lessons/create">
+              <Plus className="h-4 w-4" />
+              Vytvořit lekci
+            </Link>
           </Button>
         </div>
 

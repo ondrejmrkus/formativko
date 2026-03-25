@@ -21,10 +21,20 @@ import C02aCreateEvaluationDraft from "./pages/C02aCreateEvaluationDraft";
 import C02bCreateEvaluationDraft from "./pages/C02bCreateEvaluationDraft";
 import C03EditEvaluationDrafts from "./pages/C03EditEvaluationDrafts";
 import D01Lessons from "./pages/D01Lessons";
+import D02CreateLesson from "./pages/D02CreateLesson";
+import D03LessonDetail from "./pages/D03LessonDetail";
 import F01Classes from "./pages/F01Classes";
 import E01CaptureToolChooseClass from "./pages/E01CaptureToolChooseClass";
 import E02CaptureToolAddProofs from "./pages/E02CaptureToolAddProofs";
+import G01Goals from "./pages/G01Goals";
+import G02GoalDetail from "./pages/G02GoalDetail";
+import G03CreateGoal from "./pages/G03CreateGoal";
+import H01Subjects from "./pages/H01Subjects";
+import H02CreateSubject from "./pages/H02CreateSubject";
 import NotFound from "./pages/NotFound";
+import K01Courses from "./pages/K01Courses";
+import K02CreateCourse from "./pages/K02CreateCourse";
+import K03CourseDetail from "./pages/K03CourseDetail";
 import Z01Import from "./pages/Z01Import";
 import Z02FixAttachments from "./pages/Z02FixAttachments";
 
@@ -52,7 +62,21 @@ const App = () => (
             <Route path="/evaluations/create" element={<ProtectedRoute><C02aCreateEvaluationDraft /></ProtectedRoute>} />
             <Route path="/evaluations/create/preview" element={<ProtectedRoute><C02bCreateEvaluationDraft /></ProtectedRoute>} />
             <Route path="/evaluations/edit/:id" element={<ProtectedRoute><C03EditEvaluationDrafts /></ProtectedRoute>} />
+            <Route path="/goals" element={<ProtectedRoute><G01Goals /></ProtectedRoute>} />
+            <Route path="/goals/create" element={<ProtectedRoute><G03CreateGoal /></ProtectedRoute>} />
+            <Route path="/goals/:goalId" element={<ProtectedRoute><G02GoalDetail /></ProtectedRoute>} />
+            <Route path="/goals/:goalId/edit" element={<ProtectedRoute><G03CreateGoal /></ProtectedRoute>} />
+            <Route path="/subjects" element={<ProtectedRoute><H01Subjects /></ProtectedRoute>} />
+            <Route path="/subjects/create" element={<ProtectedRoute><H02CreateSubject /></ProtectedRoute>} />
+            <Route path="/subjects/:subjectId/edit" element={<ProtectedRoute><H02CreateSubject /></ProtectedRoute>} />
+            <Route path="/courses" element={<ProtectedRoute><K01Courses /></ProtectedRoute>} />
+            <Route path="/courses/create" element={<ProtectedRoute><K02CreateCourse /></ProtectedRoute>} />
+            <Route path="/courses/:courseId" element={<ProtectedRoute><K03CourseDetail /></ProtectedRoute>} />
+            <Route path="/courses/:courseId/edit" element={<ProtectedRoute><K02CreateCourse /></ProtectedRoute>} />
             <Route path="/lessons" element={<ProtectedRoute><D01Lessons /></ProtectedRoute>} />
+            <Route path="/lessons/create" element={<ProtectedRoute><D02CreateLesson /></ProtectedRoute>} />
+            <Route path="/lessons/:lessonId" element={<ProtectedRoute><D03LessonDetail /></ProtectedRoute>} />
+            <Route path="/lessons/:lessonId/edit" element={<ProtectedRoute><D02CreateLesson /></ProtectedRoute>} />
             <Route path="/classes" element={<ProtectedRoute><F01Classes /></ProtectedRoute>} />
             <Route path="/capture" element={<ProtectedRoute><E01CaptureToolChooseClass /></ProtectedRoute>} />
             <Route path="/capture/:classId" element={<ProtectedRoute><E02CaptureToolAddProofs /></ProtectedRoute>} />

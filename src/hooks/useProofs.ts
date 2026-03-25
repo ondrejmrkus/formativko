@@ -67,11 +67,11 @@ export function useCreateProof() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      title, type, note, date, lessonId, studentIds, fileName, fileUrl,
+      title, type, note, date, lessonId, studentIds, fileName, fileUrl, goalIds,
     }: {
       title: string; type: string; note?: string; date: string;
       lessonId?: string | null; studentIds: string[];
-      fileName?: string; fileUrl?: string;
+      fileName?: string; fileUrl?: string; goalIds?: string[];
     }) => {
       const { data: proof, error } = await supabase
         .from("proofs_of_learning")
@@ -88,6 +88,12 @@ export function useCreateProof() {
         const rows = studentIds.map((sid) => ({ proof_id: proof.id, student_id: sid }));
         const { error: err2 } = await supabase.from("proof_students").insert(rows);
         if (err2) throw err2;
+      }
+
+      if (goalIds && goalIds.length > 0) {
+        const rows = goalIds.map((gid) => ({ proof_id: proof.id, goal_id: gid }));
+        const { error: err3 } = await supabase.from("proof_goals").insert(rows);
+        if (err3) throw err3;
       }
 
       return proof;

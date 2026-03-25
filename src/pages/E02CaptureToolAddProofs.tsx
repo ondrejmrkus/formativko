@@ -1,12 +1,12 @@
-import { useState, useMemo, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
-import { Pencil, Camera, Settings, X, Check, Star } from "lucide-react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { useParams, Link, useSearchParams } from "react-router-dom";
+import { Pencil, Camera, Settings, X, Check, Star, Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useClasses, useClassStudents } from "@/hooks/useClasses";
-import { useLessons } from "@/hooks/useLessons";
+import { useLessons, useLessonGoals, useLessonStudentOverview } from "@/hooks/useLessons";
 import { getStudentShortName } from "@/hooks/useStudents";
 import { useCreateProof } from "@/hooks/useProofs";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,7 @@ type CaptureMode = null | "note" | "photo" | "grade";
 
 export default function E02CaptureToolAddProofs() {
   const { classId } = useParams<{ classId: string }>();
+  const [searchParams] = useSearchParams();
   const { data: classes = [] } = useClasses();
   const { data: students = [] } = useClassStudents(classId);
   const { data: allLessons = [] } = useLessons();
@@ -33,6 +34,42 @@ export default function E02CaptureToolAddProofs() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [lessonOpen, setLessonOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
+  const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
+
+  // Auto-select lesson from URL param
+  useEffect(() => {
+    const lessonParam = searchParams.get("lesson");
+    if (lessonParam) setSelectedLesson(lessonParam);
+  }, [searchParams]);
+
+  // Fetch goals for selected lesson
+  const { data: lessonGoals = [] } = useLessonGoals(selectedLesson || undefined);
+  const goalIds = useMemo(() => lessonGoals.map((g) => g.id), [lessonGoals]);
+
+  // Fetch student goal coverage when lesson has goals
+  const { data: studentOverview = [] } = useLessonStudentOverview(
+    goalIds.length > 0 ? classId : undefined,
+    goalIds
+  );
+
+  // Build coverage map: studentId -> "all" | "some" | "none"
+  const coverageMap = useMemo(() => {
+    if (goalIds.length === 0) return {};
+    const map: Record<string, "all" | "some" | "none"> = {};
+    for (const so of studentOverview) {
+      const counts = Object.values(so.goalCounts);
+      const covered = counts.filter((c) => c > 0).length;
+      if (covered === 0 || counts.length === 0) map[so.student.id] = "none";
+      else if (covered >= goalIds.length) map[so.student.id] = "all";
+      else map[so.student.id] = "some";
+    }
+    return map;
+  }, [studentOverview, goalIds]);
+
+  // Reset selected goals when lesson changes
+  useEffect(() => {
+    setSelectedGoalIds([]);
+  }, [selectedLesson]);
 
   const cls = classes.find((c) => c.id === classId);
   const classLessons = allLessons.filter(
@@ -75,6 +112,7 @@ export default function E02CaptureToolAddProofs() {
         date: today,
         lessonId: selectedLesson,
         studentIds: selectedStudents,
+        goalIds: selectedGoalIds.length > 0 ? selectedGoalIds : undefined,
       });
       setProofCounts((prev) => {
         const updated = { ...prev };
@@ -107,6 +145,7 @@ export default function E02CaptureToolAddProofs() {
           date: today,
           lessonId: selectedLesson,
           studentIds: [sid],
+          goalIds: selectedGoalIds.length > 0 ? selectedGoalIds : undefined,
         });
       }
       setProofCounts((prev) => {
@@ -156,6 +195,7 @@ export default function E02CaptureToolAddProofs() {
         studentIds: selectedStudents,
         fileName: photoFile.name,
         fileUrl: urlData.publicUrl,
+        goalIds: selectedGoalIds.length > 0 ? selectedGoalIds : undefined,
       });
 
       setProofCounts((prev) => {
@@ -221,10 +261,34 @@ export default function E02CaptureToolAddProofs() {
                 }`}
               >
                 {lesson.title}
-                <span className="text-xs text-muted-foreground ml-2">· {lesson.subject}</span>
+                {lesson.subjects?.name && <span className="text-xs text-muted-foreground ml-2">· {lesson.subjects.name}</span>}
               </button>
             ))
           )}
+        </div>
+      )}
+
+      {/* Goal tag bar — shown when a lesson with goals is selected */}
+      {selectedLesson && lessonGoals.length > 0 && (
+        <div className="border-b border-border bg-card px-3 py-2 flex items-center gap-2 overflow-x-auto">
+          <Target className="h-4 w-4 text-muted-foreground shrink-0" />
+          {lessonGoals.map((goal) => {
+            const isActive = selectedGoalIds.includes(goal.id);
+            return (
+              <Badge
+                key={goal.id}
+                variant={isActive ? "default" : "outline"}
+                className="cursor-pointer whitespace-nowrap shrink-0 text-xs py-1 px-2.5"
+                onClick={() =>
+                  setSelectedGoalIds((prev) =>
+                    isActive ? prev.filter((id) => id !== goal.id) : [...prev, goal.id]
+                  )
+                }
+              >
+                {goal.title}
+              </Badge>
+            );
+          })}
         </div>
       )}
 
@@ -241,15 +305,19 @@ export default function E02CaptureToolAddProofs() {
         {students.map((student: any) => {
           const isSelected = selectedStudents.includes(student.id);
           const count = proofCounts[student.id] || 0;
+          const coverage = coverageMap[student.id];
+          const coverageStyle = isSelected
+            ? "border-primary bg-primary/10 shadow-sm"
+            : coverage === "all"
+              ? "border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-950/30 hover:border-green-400"
+              : coverage === "some"
+                ? "border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 hover:border-amber-400"
+                : "border-border bg-card hover:border-primary/30";
           return (
             <button
               key={student.id}
               onClick={() => toggleStudent(student.id)}
-              className={`flex flex-col items-center justify-center rounded-xl border transition-all ${
-                isSelected
-                  ? "border-primary bg-primary/10 shadow-sm"
-                  : "border-border bg-card hover:border-primary/30"
-              }`}
+              className={`flex flex-col items-center justify-center rounded-xl border transition-all ${coverageStyle}`}
             >
               <span className="text-sm sm:text-base md:text-lg font-medium text-foreground text-center leading-tight">
                 {getStudentShortName(student)}
