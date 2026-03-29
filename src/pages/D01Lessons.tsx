@@ -4,7 +4,7 @@ import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SearchBar } from "@/components/shared/SearchBar";
 import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowRight } from "lucide-react";
+import { Plus, ArrowRight, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLessons, type Lesson } from "@/hooks/useLessons";
 import { useClasses } from "@/hooks/useClasses";
@@ -30,7 +30,7 @@ function LessonSection({ title, items, classes, showArrow = false, dimmed = fals
           <Link
             key={lesson.id}
             to={`/lessons/${lesson.id}`}
-            className={`flex items-center justify-between p-3 rounded-xl border border-border bg-card ${dimmed ? "opacity-60" : "hover:border-primary/30 hover:shadow-sm cursor-pointer"} transition-all`}
+            className={`flex items-center justify-between p-4 rounded-xl border border-border bg-card ${dimmed ? "opacity-60" : "hover:border-primary/30 hover:shadow-sm cursor-pointer"} transition-all`}
           >
             <div>
               <span className={`font-medium text-sm ${dimmed ? "text-muted-foreground" : "text-foreground"}`}>
@@ -105,7 +105,7 @@ export default function D01Lessons() {
 
   return (
     <AppLayout>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <AppBreadcrumb
           items={[
             { label: "Úvod", href: "/" },
@@ -113,12 +113,12 @@ export default function D01Lessons() {
           ]}
         />
 
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Lekce</h1>
-          <Button asChild className="gap-1">
+          <Button asChild size="sm" className="gap-1">
             <Link to="/lessons/create">
               <Plus className="h-4 w-4" />
-              Vytvořit lekci
+              Nová lekce
             </Link>
           </Button>
         </div>
@@ -140,7 +140,17 @@ export default function D01Lessons() {
           <div className="text-center py-12 text-muted-foreground">Načítání…</div>
         ) : filteredLessons.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            {lessons.length === 0 ? "Zatím nemáte žádné lekce." : "Žádné lekce neodpovídají vyhledávání."}
+            {lessons.length === 0 ? (
+              <div>
+                <BookOpen className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+                <p>Zatím nemáte žádné lekce.</p>
+                <Button asChild variant="outline" className="mt-3">
+                  <Link to="/lessons/create">Vytvořit první lekci</Link>
+                </Button>
+              </div>
+            ) : (
+              "Žádné lekce neodpovídají vyhledávání."
+            )}
           </div>
         ) : (
           <>

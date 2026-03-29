@@ -1,8 +1,12 @@
-import { Home, Users, FileText, BookOpen, LogOut, GraduationCap, Target, Book, Layers } from "lucide-react";
+import { Home, Users, FileText, BookOpen, LogOut, GraduationCap, Target, Book, Layers, ScrollText } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
-import { useSidebar } from "@/components/ui/sidebar";
+import { useSidebar, SidebarTrigger } from "@/components/ui/sidebar";
+import { useClasses } from "@/hooks/useClasses";
+import { useCourses } from "@/hooks/useCourses";
+import { useGoals } from "@/hooks/useGoals";
+import { useLessons } from "@/hooks/useLessons";
 import logoImage from "@/assets/logo.png";
 import {
   Sidebar,
@@ -15,15 +19,23 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar";
 
-const navItems = [
-  { title: "Pomocník", url: "/", icon: Home },
-  { title: "Kurzy", url: "/courses", icon: Layers },
-  { title: "Žáci", url: "/student-profiles", icon: Users },
-  { title: "Třídy", url: "/classes", icon: GraduationCap },
-  { title: "Hodnocení", url: "/evaluations", icon: FileText },
-  { title: "Předměty", url: "/subjects", icon: Book },
-  { title: "Cíle", url: "/goals", icon: Target },
-  { title: "Lekce", url: "/lessons", icon: BookOpen },
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  visibleWhen: "always" | "hasClasses" | "hasCourses" | "hasGoals" | "hasLessons";
+}
+
+const navItems: NavItem[] = [
+  { title: "Pomocník", url: "/", icon: Home, visibleWhen: "always" },
+  { title: "Kurzy", url: "/courses", icon: Layers, visibleWhen: "hasCourses" },
+  { title: "Žáci", url: "/student-profiles", icon: Users, visibleWhen: "hasClasses" },
+  { title: "Třídy", url: "/classes", icon: GraduationCap, visibleWhen: "hasClasses" },
+  { title: "Hodnocení", url: "/evaluations", icon: FileText, visibleWhen: "hasLessons" },
+  { title: "Předměty", url: "/subjects", icon: Book, visibleWhen: "hasCourses" },
+  { title: "Cíle", url: "/goals", icon: Target, visibleWhen: "hasGoals" },
+  { title: "Lekce", url: "/lessons", icon: BookOpen, visibleWhen: "hasLessons" },
+  { title: "RVP 2025", url: "/rvp", icon: ScrollText, visibleWhen: "always" },
 ];
 
 export function AppSidebar() {
@@ -33,6 +45,21 @@ export function AppSidebar() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
 
+  const { data: classes = [] } = useClasses();
+  const { data: courses = [] } = useCourses();
+  const { data: goals = [] } = useGoals();
+  const { data: lessons = [] } = useLessons();
+
+  const visibility: Record<NavItem["visibleWhen"], boolean> = {
+    always: true,
+    hasClasses: classes.length > 0,
+    hasCourses: courses.length > 0,
+    hasGoals: goals.length > 0,
+    hasLessons: lessons.length > 0,
+  };
+
+  const visibleItems = navItems.filter((item) => visibility[item.visibleWhen]);
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/login");
@@ -41,15 +68,16 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
           <img src={logoImage} alt="Tiny logo" className={`${collapsed ? "h-8 w-8 object-contain" : "h-7"}`} />
+          <SidebarTrigger />
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink

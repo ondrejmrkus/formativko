@@ -22,18 +22,16 @@ serve(async (req) => {
     const file = formData.get("file") as File;
     if (!file) throw new Error("No file provided");
 
-    const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
     const fileBytes = new Uint8Array(await file.arrayBuffer());
-    const base64 = btoa(String.fromCharCode(...fileBytes));
 
     const isImage = file.type.startsWith("image/");
     const isPdf = file.type === "application/pdf";
 
-    // Build message content
-    const textPrompt = `Extract all student names from this ${isImage ? "image" : "document"}. 
-Return ONLY a JSON array of objects with "first" and "last" keys. 
+    const textPrompt = `Extract all student names from this ${isImage ? "image" : "document"}.
+Return ONLY a JSON array of objects with "first" and "last" keys.
 Example: [{"first": "Jan", "last": "Novák"}, {"first": "Marie", "last": "Dvořáková"}]
 If you find a single name without surname, put it in "first" and leave "last" empty.
 If you cannot find any names, return an empty array [].
@@ -42,7 +40,7 @@ Return ONLY the JSON array, no other text.`;
     let messages: any[];
 
     if (isImage || isPdf) {
-      // Use vision model for images and PDFs
+      const base64 = btoa(String.fromCharCode(...fileBytes));
       const mimeType = file.type || "application/octet-stream";
       messages = [
         {
@@ -57,7 +55,6 @@ Return ONLY the JSON array, no other text.`;
         },
       ];
     } else {
-      // For text-based documents, decode and send as text
       const decoder = new TextDecoder("utf-8", { fatal: false });
       const textContent = decoder.decode(fileBytes);
       messages = [
@@ -68,14 +65,14 @@ Return ONLY the JSON array, no other text.`;
       ];
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: isImage || isPdf ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash-lite",
+        model: "gpt-4o-mini",
         messages,
         temperature: 0.1,
       }),

@@ -18,6 +18,7 @@ export interface EducationalGoal {
   title: string;
   description: string;
   subject_id: string | null;
+  course_id: string | null;
   created_at: string;
   updated_at: string;
   subjects?: { id: string; name: string } | null;

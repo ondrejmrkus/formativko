@@ -2,3 +2,21 @@ project_id = "qwdmsfsflohupwlwukhn"
 
 [functions.generate-evaluation]
 verify_jwt = false
+
+[functions.generate-goals]
+verify_jwt = false
+
+[functions.generate-criteria]
+verify_jwt = false
+
+[functions.formulate-goal]
+verify_jwt = false
+
+[functions.generate-goals-from-plan]
+verify_jwt = false
+
+[functions.generate-lessons-from-plan]
+verify_jwt = false
+
+[functions.extract-names]
+verify_jwt = false

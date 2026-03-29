@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getRvpContext } from "../_shared/rvp/rvp.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,7 +23,9 @@ serve(async (req) => {
 
     if (!topic) throw new Error("Topic is required");
 
-    const systemPrompt = `Jsi zkušený český pedagog a odborník na formativní hodnocení. Navrhni vzdělávací cíle s kritérii hodnocení pro danou lekci. Každý cíl by měl mít 1-2 kritéria, každé kritérium se 3 úrovněmi (Začínám, Rozvíjím se, Ovládám). Odpověz POUZE validním JSON objektem v tomto formátu:
+    const rvpContext = getRvpContext(classContext);
+
+    const systemPrompt = `Jsi zkušený český pedagog a odborník na formativní hodnocení. Navrhni vzdělávací cíle s kritérii hodnocení pro danou lekci. Každý cíl by měl mít 1-2 kritéria, každé kritérium se 3 úrovněmi (Začínám, Rozvíjím se, Ovládám). Inspiruj se přiloženým RVP ZV 2025. Odpověz POUZE validním JSON objektem v tomto formátu:
 {
   "goals": [
     {
@@ -41,7 +44,8 @@ serve(async (req) => {
     }
   ]
 }
-Navrhni 2-3 cíle. Cíle by měly být konkrétní, měřitelné a relevantní pro danou lekci.`;
+Navrhni 2-3 cíle. Cíle by měly být konkrétní, měřitelné a relevantní pro danou lekci.
+${rvpContext}`;
 
     const userPrompt = `Předmět: ${subject}${classContext ? `\nTřída/ročník: ${classContext}` : ""}
 

@@ -125,7 +125,7 @@ export default function B03aProofOfLearningDetailText() {
           <DateField date={new Date(proof.date)} />
 
           <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-2">Žáci</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Žáci</label>
             <div className="flex flex-wrap gap-2">
               {linkedStudents.map((s) => (
                 <StudentChip key={s!.id} name={getStudentDisplayName(s!)} removable />
@@ -134,7 +134,7 @@ export default function B03aProofOfLearningDetailText() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámka</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Poznámka</label>
             <Textarea
               className="min-h-[120px] bg-card"
               value={note}

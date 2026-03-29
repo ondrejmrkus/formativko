@@ -97,7 +97,7 @@ export default function D03LessonDetail() {
   };
 
   if (isLoading || !lesson) {
-    return <AppLayout><div className="text-center py-12 text-muted-foreground">Načítání...</div></AppLayout>;
+    return <AppLayout><div className="text-center py-12 text-muted-foreground">Načítání…</div></AppLayout>;
   }
 
   // Students with zero evidence across all linked goals
@@ -124,9 +124,9 @@ export default function D03LessonDetail() {
           {lesson.date && <Badge variant="outline">{lesson.date}</Badge>}
           <Badge className={statusColors[lesson.status] || ""}>{statusLabels[lesson.status] || lesson.status}</Badge>
           <div className="ml-auto flex gap-1">
-            {cls && (
+            {lesson.course_id && (
               <Button variant="default" size="sm" className="gap-1.5" asChild>
-                <Link to={`/capture/${cls.id}?lesson=${lesson.id}`}>
+                <Link to={`/capture/${lesson.course_id}?lesson=${lesson.id}`}>
                   <Camera className="h-4 w-4" />
                   Zachycovat
                 </Link>

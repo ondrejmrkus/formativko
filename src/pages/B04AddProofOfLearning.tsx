@@ -171,7 +171,7 @@ export default function B04AddProofOfLearning() {
         <div className="space-y-4">
           {selectedType === "text" && (
             <div>
-              <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámka</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Poznámka</label>
               <Textarea
                 className="min-h-[120px] bg-card"
                 placeholder="Napište poznámku..."
@@ -183,7 +183,7 @@ export default function B04AddProofOfLearning() {
 
           {selectedType === "grade" && (
             <div className="space-y-3">
-              <label className="text-sm font-medium text-muted-foreground block">Známky</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block">Známky</label>
               {attachedStudentIds.map((sid) => {
                 const s = allStudents.find((st) => st.id === sid);
                 if (!s) return null;
@@ -215,7 +215,7 @@ export default function B04AddProofOfLearning() {
                 );
               })}
               <div className="pt-2">
-                <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámka</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Poznámka</label>
                 <Textarea
                   className="min-h-[80px] bg-card"
                   placeholder="Volitelná poznámka ke známkám..."
@@ -254,7 +254,7 @@ export default function B04AddProofOfLearning() {
           )}
 
           <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-2">Název důkazu</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Název důkazu</label>
             <Input
               placeholder="Pojmenujte důkaz o učení..."
               className="bg-card"
@@ -269,7 +269,7 @@ export default function B04AddProofOfLearning() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-2">Žáci</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Žáci</label>
             <div className="flex flex-wrap gap-2">
               {attachedStudentIds.map((sid) => {
                 const s = allStudents.find((st) => st.id === sid);
@@ -327,7 +327,7 @@ export default function B04AddProofOfLearning() {
           {/* Goals selector */}
           {classGoals.length > 0 && (
             <div>
-              <label className="text-sm font-medium text-muted-foreground block mb-2">Vzdělávací cíle (volitelné)</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Vzdělávací cíle (volitelné)</label>
               <div className="flex flex-wrap gap-2">
                 {selectedGoalIds.map((gid) => {
                   const g = classGoals.find((goal) => goal.id === gid);
@@ -381,7 +381,7 @@ export default function B04AddProofOfLearning() {
 
           {selectedType !== "text" && (
             <div>
-              <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámka</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Poznámka</label>
               <Textarea className="min-h-[80px] bg-card" placeholder="Volitelná poznámka..." value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
           )}

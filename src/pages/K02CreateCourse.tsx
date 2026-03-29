@@ -108,10 +108,11 @@ export default function K02CreateCourse() {
           thematicPlanFileUrl: planFileUrl,
         });
         toast({ title: "Kurz vytvořen" });
-        navigate(`/courses/${course.id}`);
+        navigate("/");
       }
-    } catch {
-      toast({ title: "Chyba při ukládání", variant: "destructive" });
+    } catch (err: any) {
+      console.error("Course save error:", err);
+      toast({ title: "Chyba při ukládání", description: err?.message, variant: "destructive" });
     }
   };
 
@@ -169,24 +170,31 @@ export default function K02CreateCourse() {
           {/* Subject */}
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Předmět</label>
-            <div className="flex flex-wrap gap-2">
-              {subjects.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setSelectedSubjectId(s.id)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
-                    selectedSubjectId === s.id
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-card text-muted-foreground hover:border-primary/30"
-                  }`}
-                >
-                  {s.name}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 mt-2">
+            {subjects.length > 0 ? (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {subjects.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSelectedSubjectId(s.id)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+                        selectedSubjectId === s.id
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-card text-muted-foreground hover:border-primary/30"
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 mb-1.5">Nebo vytvořte nový předmět:</p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground mb-2">Zatím nemáte žádné předměty. Vytvořte svůj první:</p>
+            )}
+            <div className="flex items-center gap-2">
               <Input
-                placeholder="Nový předmět..."
+                placeholder="Název předmětu..."
                 className="bg-card flex-1"
                 value={newSubjectName}
                 onChange={(e) => setNewSubjectName(e.target.value)}
@@ -219,7 +227,7 @@ export default function K02CreateCourse() {
                   }
                 }}
               >
-                <Plus className="h-4 w-4" />
+                {createSubject.isPending ? "..." : "Vytvořit"}
               </Button>
             </div>
           </div>

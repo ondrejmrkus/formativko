@@ -228,7 +228,7 @@ export default function B02StudentProfileDetail() {
 
               {/* Zájmy a motivace */}
               <div>
-                <label className="text-sm font-medium text-foreground block mb-1.5">Zájmy a motivace</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Zájmy a motivace</label>
                 <Textarea
                   placeholder="Co žáka baví, co ho motivuje k učení…"
                   className="min-h-[60px] bg-card"
@@ -239,7 +239,7 @@ export default function B02StudentProfileDetail() {
 
               {/* Komunikační preference */}
               <div>
-                <label className="text-sm font-medium text-foreground block mb-1.5">Komunikační preference</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Komunikační preference</label>
                 <div className="space-y-2">
                   {COMMUNICATION_OPTIONS.map((opt) => (
                     <label key={opt.value} className="flex items-center gap-2 cursor-pointer select-none">
@@ -265,7 +265,7 @@ export default function B02StudentProfileDetail() {
 
               {/* Preferované styly učení */}
               <div>
-                <label className="text-sm font-medium text-foreground block mb-1.5">Preferované styly učení</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Preferované styly učení</label>
                 <div className="space-y-2">
                   {LEARNING_STYLE_OPTIONS.map((opt) => (
                     <label key={opt.value} className="flex items-center gap-2 cursor-pointer select-none">
@@ -314,7 +314,7 @@ export default function B02StudentProfileDetail() {
 
               {/* Ostatní poznámky */}
               <div>
-                <label className="text-sm font-medium text-foreground block mb-1.5">Ostatní poznámky</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Ostatní poznámky</label>
                 <Textarea
                   placeholder="Další poznámky k žákovi…"
                   className="min-h-[60px] bg-card"

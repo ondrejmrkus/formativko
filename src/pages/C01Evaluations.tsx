@@ -100,18 +100,18 @@ export default function C01Evaluations() {
           ]}
         />
 
-        <h1 className="text-2xl font-bold mb-6">Hodnocení</h1>
-
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1">
-            <SearchBar placeholder="Hledat hodnocení..." value={search} onChange={setSearch} />
-          </div>
-          <Button asChild className="gap-1 shrink-0">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Hodnocení</h1>
+          <Button asChild size="sm" className="gap-1">
             <Link to="/evaluations/create">
               <Plus className="h-4 w-4" />
-              Vytvořit hodnocení
+              Nové hodnocení
             </Link>
           </Button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+          <SearchBar placeholder="Hledat hodnocení..." value={search} onChange={setSearch} />
         </div>
 
         <ClassFilterBar
@@ -134,7 +134,17 @@ export default function C01Evaluations() {
           <div className="text-center py-12 text-muted-foreground">Načítání…</div>
         ) : filteredGroups.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            {evaluationGroups.length === 0 ? "Zatím nemáte žádná hodnocení." : "Žádná hodnocení neodpovídají vyhledávání."}
+            {evaluationGroups.length === 0 ? (
+              <div>
+                <Plus className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+                <p>Zatím nemáte žádná hodnocení.</p>
+                <Button asChild variant="outline" className="mt-3">
+                  <Link to="/evaluations/create">Vytvořit první hodnocení</Link>
+                </Button>
+              </div>
+            ) : (
+              "Žádná hodnocení neodpovídají vyhledávání."
+            )}
           </div>
         ) : (
           <div className="divide-y divide-border">

@@ -146,6 +146,40 @@ export function useUpdateCourse() {
   });
 }
 
+export function useLinkGoalToCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ goalId, courseId }: { goalId: string; courseId: string }) => {
+      const { error } = await supabase
+        .from("educational_goals")
+        .update({ course_id: courseId })
+        .eq("id", goalId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+    },
+  });
+}
+
+export function useLinkLessonToCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ lessonId, courseId }: { lessonId: string; courseId: string }) => {
+      const { error } = await supabase
+        .from("lessons")
+        .update({ course_id: courseId })
+        .eq("id", lessonId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      queryClient.invalidateQueries({ queryKey: ["lessons"] });
+    },
+  });
+}
+
 export function useDeleteCourse() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -160,6 +194,68 @@ export function useDeleteCourse() {
       queryClient.invalidateQueries({ queryKey: ["courses"] });
       queryClient.invalidateQueries({ queryKey: ["lessons"] });
       queryClient.invalidateQueries({ queryKey: ["goals"] });
+    },
+  });
+}
+
+// --- Course seating positions ---
+
+export interface CourseSeat {
+  student_id: string;
+  seat_row: number;
+  seat_col: number;
+}
+
+export function useCourseSeating(courseId: string | undefined) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["course_seating", courseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("course_student_seats")
+        .select("student_id, seat_row, seat_col")
+        .eq("course_id", courseId!);
+      if (error) throw error;
+      return (data || []) as CourseSeat[];
+    },
+    enabled: !!user && !!courseId,
+  });
+}
+
+export function useSaveCourseSeating() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      courseId,
+      positions,
+    }: {
+      courseId: string;
+      positions: { studentId: string; row: number | null; col: number | null }[];
+    }) => {
+      // Delete all existing seats for this course
+      const { error: delErr } = await supabase
+        .from("course_student_seats")
+        .delete()
+        .eq("course_id", courseId);
+      if (delErr) throw delErr;
+      // Insert only positioned students
+      const rows = positions
+        .filter((p) => p.row != null && p.col != null)
+        .map((p) => ({
+          course_id: courseId,
+          student_id: p.studentId,
+          seat_row: p.row!,
+          seat_col: p.col!,
+        }));
+      if (rows.length > 0) {
+        const { error: insErr } = await supabase
+          .from("course_student_seats")
+          .insert(rows);
+        if (insErr) throw insErr;
+      }
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["course_seating", vars.courseId] });
     },
   });
 }

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Plus, Trash2, GripVertical, Copy } from "lucide-react";
+import { Plus, Trash2, GripVertical, Copy, Sparkles, Loader2, Check, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +43,10 @@ export default function G03CreateGoal() {
   const updateGoal = useUpdateGoal();
   const createSubject = useCreateSubject();
 
+  const [generatingCriteria, setGeneratingCriteria] = useState(false);
+  const [formulatingGoal, setFormulatingGoal] = useState(false);
+  const [suggestedTitle, setSuggestedTitle] = useState<string | null>(null);
+  const [suggestedDescription, setSuggestedDescription] = useState<string | null>(null);
   const [cloneOpen, setCloneOpen] = useState(false);
   const [cloneSearch, setCloneSearch] = useState("");
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
@@ -145,6 +149,87 @@ export default function G03CreateGoal() {
     );
   };
 
+  const handleFormulateGoal = async () => {
+    if (!title.trim()) {
+      toast({ title: "Nejdříve napište cíl svými slovy", variant: "destructive" });
+      return;
+    }
+
+    setFormulatingGoal(true);
+    setSuggestedTitle(null);
+    setSuggestedDescription(null);
+    try {
+      const selectedSubject = subjects.find((s) => s.id === selectedSubjectId);
+      const selectedClass = classes.find((c) => c.id === selectedClassId);
+      const { data, error } = await supabase.functions.invoke("formulate-goal", {
+        body: {
+          rawGoal: title.trim(),
+          subject: selectedSubject?.name || undefined,
+          className: selectedClass?.name || undefined,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data.title) setSuggestedTitle(data.title);
+      if (data.description) setSuggestedDescription(data.description);
+    } catch (err: any) {
+      console.error("Formulate goal error:", err);
+      toast({ title: "Chyba při formulaci", description: err?.message, variant: "destructive" });
+    } finally {
+      setFormulatingGoal(false);
+    }
+  };
+
+  const handleGenerateCriteria = async () => {
+    if (!title.trim()) {
+      toast({ title: "Nejdříve zadejte název cíle", variant: "destructive" });
+      return;
+    }
+
+    setGeneratingCriteria(true);
+    try {
+      // Collect existing level names if user has customized them
+      const existingLevels = criteria[0]?.level_descriptors
+        ?.map((ld) => ld.level)
+        .filter((l) => l.trim());
+      const selectedSubject = subjects.find((s) => s.id === selectedSubjectId);
+
+      const selectedClass = classes.find((c) => c.id === selectedClassId);
+      const { data, error } = await supabase.functions.invoke("generate-criteria", {
+        body: {
+          goalTitle: title.trim(),
+          goalDescription: description.trim() || undefined,
+          subject: selectedSubject?.name || undefined,
+          levelNames: existingLevels && existingLevels.length > 0 ? existingLevels : undefined,
+          className: selectedClass?.name || undefined,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data.criteria && data.criteria.length > 0) {
+        setCriteria(
+          data.criteria.map((c: any) => ({
+            description: c.description || "",
+            level_descriptors: (c.level_descriptors || []).map((ld: any) => ({
+              level: ld.level || "",
+              description: ld.description || "",
+            })),
+          }))
+        );
+        toast({ title: "Kritéria vygenerována" });
+      }
+    } catch (err: any) {
+      console.error("Generate criteria error:", err);
+      toast({ title: "Chyba při generování", description: err?.message, variant: "destructive" });
+    } finally {
+      setGeneratingCriteria(false);
+    }
+  };
+
   const handleClone = async (goalId: string) => {
     try {
       const { data, error } = await supabase
@@ -210,7 +295,7 @@ export default function G03CreateGoal() {
           description: description.trim(),
           subjectId: selectedSubjectId,
           criteria: validCriteria,
-          courseId: courseIdParam,
+          courseId: courseIdParam ?? existingGoal?.course_id ?? null,
         });
         toast({ title: "Cíl upraven" });
         navigate(`/goals/${goalId}`);
@@ -224,7 +309,7 @@ export default function G03CreateGoal() {
           courseId: courseIdParam,
         });
         toast({ title: "Cíl vytvořen" });
-        navigate(courseIdParam ? `/courses/${courseIdParam}` : `/goals/${goal.id}`);
+        navigate("/");
       }
     } catch {
       toast({ title: "Chyba při ukládání", variant: "destructive" });
@@ -346,15 +431,55 @@ export default function G03CreateGoal() {
 
           {/* Title */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
-              Název cíle
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Název cíle
+              </label>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={handleFormulateGoal}
+                disabled={formulatingGoal || !title.trim()}
+              >
+                {formulatingGoal ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {formulatingGoal ? "Formuluji..." : "Formulovat pomocí AI"}
+              </Button>
+            </div>
             <Input
               placeholder="Např. Žák řeší slovní úlohy s násobením..."
               className="bg-card"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
+            {suggestedTitle && (
+              <div className="mt-2 p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-primary">Navrhovaný název:</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => { setTitle(suggestedTitle); setSuggestedTitle(null); }}
+                      className="p-1 rounded hover:bg-primary/10 text-primary transition-colors"
+                      title="Přijmout"
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setSuggestedTitle(null)}
+                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground transition-colors"
+                      title="Odmítnout"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm">{suggestedTitle}</p>
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -368,13 +493,53 @@ export default function G03CreateGoal() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
+            {suggestedDescription && (
+              <div className="mt-2 p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-primary">Navrhovaný popis:</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => { setDescription(suggestedDescription); setSuggestedDescription(null); }}
+                      className="p-1 rounded hover:bg-primary/10 text-primary transition-colors"
+                      title="Přijmout"
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setSuggestedDescription(null)}
+                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground transition-colors"
+                      title="Odmítnout"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm">{suggestedDescription}</p>
+              </div>
+            )}
           </div>
 
           {/* Criteria */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
-              Kritéria hodnocení
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Kritéria hodnocení
+              </label>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={handleGenerateCriteria}
+                disabled={generatingCriteria || !title.trim()}
+              >
+                {generatingCriteria ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                {generatingCriteria ? "Generuji..." : "Vygenerovat pomocí AI"}
+              </Button>
+            </div>
             <div className="space-y-4">
               {criteria.map((criterion, cIdx) => (
                 <div key={cIdx} className="p-4 rounded-xl bg-card border border-border space-y-3">

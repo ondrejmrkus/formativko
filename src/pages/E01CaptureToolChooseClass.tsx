@@ -1,12 +1,27 @@
 import { Link } from "react-router-dom";
-import { useClasses } from "@/hooks/useClasses";
+import { Button } from "@/components/ui/button";
+import { Home, BookOpen } from "lucide-react";
+import { useCourses } from "@/hooks/useCourses";
+import { useTodaysLessons } from "@/hooks/useDashboard";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMemo } from "react";
 
 export default function E01CaptureToolChooseClass() {
-  const { data: classes = [], isLoading } = useClasses();
+  const { data: courses = [], isLoading } = useCourses();
   const { user } = useAuth();
+  const { data: todaysLessons = [] } = useTodaysLessons();
+
+  // Course IDs that have a lesson today (via class_id match)
+  const todayCourseIds = useMemo(() => {
+    const todayClassIds = new Set(todaysLessons.map((l) => l.class_id).filter(Boolean));
+    return new Set(
+      courses
+        .filter((c) => todayClassIds.has(c.class_id))
+        .map((c) => c.id)
+    );
+  }, [todaysLessons, courses]);
 
   const { data: counts = {} } = useQuery({
     queryKey: ["class_student_counts", user?.id],
@@ -22,43 +37,76 @@ export default function E01CaptureToolChooseClass() {
     enabled: !!user,
   });
 
+  // Sort: today's courses first, then alphabetically
+  const sortedCourses = useMemo(() =>
+    [...courses].sort((a, b) => {
+      const aToday = todayCourseIds.has(a.id) ? 0 : 1;
+      const bToday = todayCourseIds.has(b.id) ? 0 : 1;
+      return aToday - bToday || a.name.localeCompare(b.name, "cs");
+    }),
+    [courses, todayCourseIds]
+  );
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="flex items-center justify-between p-4 border-b border-border bg-card">
-        <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← Úvod</Link>
-        <div className="text-center">
-          <h1 className="text-lg font-bold text-foreground">Zachytávač</h1>
-          <p className="text-sm text-muted-foreground">Vyberte třídu</p>
-        </div>
-        <div className="w-12" />
+      <header className="flex items-center justify-between p-3 border-b border-border bg-card">
+        <h1 className="text-lg font-bold">Zachytávač</h1>
+        <Link to="/" className="p-2 hover:bg-accent rounded-lg" title="Zpět na úvod">
+          <Home className="h-5 w-5 text-muted-foreground" />
+        </Link>
       </header>
 
       <div className="flex-1 p-4 flex flex-col gap-3 max-w-md mx-auto w-full">
+        <p className="text-sm text-muted-foreground">Vyberte kurz</p>
+
         {isLoading ? (
           <div className="text-center py-12 text-muted-foreground">Načítání…</div>
-        ) : classes.length === 0 ? (
+        ) : courses.length === 0 ? (
           <div className="text-center py-16 space-y-4">
-            <p className="text-muted-foreground">Zatím nemáte žádnou třídu.</p>
+            <BookOpen className="h-10 w-10 mx-auto text-muted-foreground/50" />
+            <p className="text-muted-foreground">Zatím nemáte žádný kurz.</p>
             <div className="flex flex-col gap-2 max-w-xs mx-auto">
-              <Link to="/create-class" className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium hover:bg-primary/90 transition-colors">
-                Vytvořit třídu
-              </Link>
-              <Link to="/" className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card text-foreground px-4 py-2.5 text-sm font-medium hover:bg-accent transition-colors">
-                Zpět na úvod
-              </Link>
+              <Button asChild>
+                <Link to="/courses/create">Vytvořit kurz</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/">Zpět na úvod</Link>
+              </Button>
             </div>
           </div>
         ) : (
-          classes.map((cls) => (
-            <Link
-              key={cls.id}
-              to={`/capture/${cls.id}`}
-              className="flex items-center justify-between p-5 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-md transition-all"
-            >
-              <span className="text-lg font-semibold text-foreground">{cls.name}</span>
-              <span className="text-sm text-muted-foreground">{counts[cls.id] || 0} žáků</span>
-            </Link>
-          ))
+          sortedCourses.map((course) => {
+            const isToday = todayCourseIds.has(course.id);
+            return (
+              <Link
+                key={course.id}
+                to={`/capture/${course.id}`}
+                className={`flex items-center justify-between p-5 rounded-xl border transition-all hover:shadow-sm ${
+                  isToday
+                    ? "bg-primary/5 border-primary/20 hover:border-primary/40"
+                    : "bg-card border-border hover:border-primary/30"
+                }`}
+              >
+                <div>
+                  <span className="text-lg font-semibold text-foreground">
+                    {course.name}
+                    {isToday && (
+                      <span className="ml-2 text-xs font-normal text-primary">dnes</span>
+                    )}
+                  </span>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {course.classes?.name && (
+                      <span className="text-xs text-muted-foreground">{course.classes.name}</span>
+                    )}
+                    {course.subjects?.name && (
+                      <span className="text-xs text-muted-foreground">· {course.subjects.name}</span>
+                    )}
+                  </div>
+                </div>
+                <span className="text-sm text-muted-foreground">{counts[course.class_id] || 0} žáků</span>
+              </Link>
+            );
+          })
         )}
       </div>
     </div>

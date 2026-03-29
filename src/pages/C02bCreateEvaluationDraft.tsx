@@ -23,8 +23,9 @@ export default function C02bCreateEvaluationDraft() {
   const {
     groupId, evaluationId, studentName, text: initialText, noProofs,
     subject, period,
-    selectedType, selectedClassId, selectedStudentId,
+    selectedType, selectedClassId, selectedStudentId, selectedGoalId,
     dateFrom, dateTo, preferences, className, totalStudents,
+    tone, person, evalLength, customSystemPrompt,
   } = state || {};
 
   const [draftText, setDraftText] = useState(initialText || "");
@@ -57,6 +58,9 @@ export default function C02bCreateEvaluationDraft() {
         dateFrom,
         dateTo,
         preferences,
+        tone,
+        person,
+        evalLength,
       },
     });
   };
@@ -88,6 +92,12 @@ export default function C02bCreateEvaluationDraft() {
               dateFrom,
               dateTo,
               preferences: preferences?.trim() || null,
+              goalId: selectedGoalId || null,
+              className: className || null,
+              tone: tone || null,
+              person: person || null,
+              length: evalLength || null,
+              customSystemPrompt: customSystemPrompt || null,
             },
           });
 
@@ -104,6 +114,7 @@ export default function C02bCreateEvaluationDraft() {
             period,
             text: evalText,
             status: evalStatus,
+            goalId: selectedGoalId,
           });
         } catch (e: any) {
           console.error(`Error generating for ${student.id}:`, e);
@@ -140,7 +151,7 @@ export default function C02bCreateEvaluationDraft() {
           ]}
         />
 
-        <h1 className="text-2xl font-bold mb-2">Náhled konceptu</h1>
+        <h1 className="text-2xl font-bold mb-6">Náhled konceptu</h1>
         <p className="text-muted-foreground mb-6">
           Zkontrolujte vygenerované hodnocení a rozhodněte se, zda pokračovat.
         </p>

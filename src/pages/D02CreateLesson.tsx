@@ -134,7 +134,7 @@ export default function D02CreateLesson() {
           plannedActivities: plannedActivities.trim(),
           observationFocus: observationFocus.trim(),
           goalIds: selectedGoalIds,
-          courseId: courseIdParam,
+          courseId: courseIdParam ?? existingLesson?.course_id ?? null,
         });
         toast({ title: "Lekce upravena" });
         navigate(`/lessons/${lessonId}`);
@@ -151,7 +151,7 @@ export default function D02CreateLesson() {
           courseId: courseIdParam,
         });
         toast({ title: "Lekce vytvořena" });
-        navigate(`/lessons/${lesson.id}`);
+        navigate("/");
       }
     } catch {
       toast({ title: "Chyba při ukládání", variant: "destructive" });
@@ -172,8 +172,9 @@ export default function D02CreateLesson() {
 
     try {
       const subjectName = subjects.find((s) => s.id === selectedSubjectId)?.name || "obecný";
+      const selectedClass = classes.find((c) => c.id === selectedClassId);
       const { data, error } = await supabase.functions.invoke("generate-goals", {
-        body: { topic, subject: subjectName },
+        body: { topic, subject: subjectName, classContext: selectedClass?.name || undefined },
       });
       if (error) throw error;
       setSuggestedGoals(data?.goals || []);

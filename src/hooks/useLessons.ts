@@ -8,6 +8,7 @@ export interface Lesson {
   title: string;
   class_id: string | null;
   subject_id: string | null;
+  course_id: string | null;
   status: string;
   date: string | null;
   planned_activities: string;

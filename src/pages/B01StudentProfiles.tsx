@@ -130,7 +130,7 @@ export default function B01StudentProfiles() {
           ]}
         />
 
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Profily žáků</h1>
           <Button asChild size="sm">
             <Link to="/create-student-profiles">
@@ -169,9 +169,17 @@ export default function B01StudentProfiles() {
           <div className="text-center py-12 text-muted-foreground">Načítání…</div>
         ) : filteredStudents.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            {students.length === 0
-              ? "Zatím nemáte žádné žáky."
-              : "Žádní žáci neodpovídají vyhledávání."}
+            {students.length === 0 ? (
+              <div>
+                <Plus className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+                <p>Zatím nemáte žádné žáky.</p>
+                <Button asChild variant="outline" className="mt-3">
+                  <Link to="/create-student-profiles">Přidat prvního žáka</Link>
+                </Button>
+              </div>
+            ) : (
+              "Žádní žáci neodpovídají vyhledávání."
+            )}
           </div>
         ) : (
           <div className="divide-y divide-border">

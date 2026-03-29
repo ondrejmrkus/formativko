@@ -45,7 +45,7 @@ export default function B03bProofOfLearningDetailFile() {
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-2">Příloha</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Příloha</label>
             <div className="relative rounded-xl border border-border bg-muted overflow-hidden">
               {proof.file_url ? (
                 <img src={proof.file_url} alt={proof.file_name || "Příloha"} className="w-full aspect-video object-contain bg-background" />
@@ -69,7 +69,7 @@ export default function B03bProofOfLearningDetailFile() {
           <DateField date={new Date(proof.date)} />
 
           <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-2">Žáci</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Žáci</label>
             <div className="flex flex-wrap gap-2">
               {linkedStudents.map((s) => (
                 <StudentChip key={s!.id} name={getStudentDisplayName(s!)} removable />
@@ -78,7 +78,7 @@ export default function B03bProofOfLearningDetailFile() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-2">Poznámka</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Poznámka</label>
             <Textarea className="min-h-[120px] bg-card" defaultValue={proof.note || ""} />
           </div>
 

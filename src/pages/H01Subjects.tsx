@@ -65,22 +65,22 @@ export default function H01Subjects() {
           ]}
         />
 
-        <h1 className="text-2xl font-bold mb-6">Předměty</h1>
-
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1">
-            <SearchBar placeholder="Hledat předmět..." value={search} onChange={setSearch} />
-          </div>
-          <Button asChild className="gap-1 shrink-0">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Předměty</h1>
+          <Button asChild size="sm" className="gap-1">
             <Link to="/subjects/create">
               <Plus className="h-4 w-4" />
-              Přidat předmět
+              Nový předmět
             </Link>
           </Button>
         </div>
 
+        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+          <SearchBar placeholder="Hledat předmět..." value={search} onChange={setSearch} />
+        </div>
+
         {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Načítání...</div>
+          <div className="text-center py-12 text-muted-foreground">Načítání…</div>
         ) : filteredSubjects.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             {subjects.length === 0 ? (

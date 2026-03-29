@@ -69,7 +69,7 @@ export default function F01Classes() {
           ]}
         />
 
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Třídy</h1>
           <Button asChild size="sm">
             <Link to="/create-class">
@@ -87,9 +87,17 @@ export default function F01Classes() {
           <div className="text-center py-12 text-muted-foreground">Načítání…</div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            {classes.length === 0
-              ? "Zatím nemáte žádné třídy."
-              : "Žádné třídy neodpovídají vyhledávání."}
+            {classes.length === 0 ? (
+              <div>
+                <Users className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+                <p>Zatím nemáte žádné třídy.</p>
+                <Button asChild variant="outline" className="mt-3">
+                  <Link to="/create-class">Vytvořit první třídu</Link>
+                </Button>
+              </div>
+            ) : (
+              "Žádné třídy neodpovídají vyhledávání."
+            )}
           </div>
         ) : (
           <div className="divide-y divide-border">

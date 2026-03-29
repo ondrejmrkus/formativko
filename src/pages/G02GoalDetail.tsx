@@ -23,6 +23,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getStudentDisplayName } from "@/hooks/useStudents";
+import { useStudentGoalLevels, useSetStudentGoalLevel } from "@/hooks/useStudentGoalLevels";
+import { DEFAULT_LEVEL_DESCRIPTORS } from "@/constants/goalLevels";
 
 export default function G02GoalDetail() {
   const { goalId } = useParams<{ goalId: string }>();
@@ -70,19 +72,30 @@ export default function G02GoalDetail() {
     enabled: !!user && !!goalId,
   });
 
-  // Goal coverage per student
-  const studentCoverage = useMemo(() => {
-    const proofStudentIds = new Set<string>();
-    for (const proof of linkedProofs) {
-      for (const s of proof.students) {
-        proofStudentIds.add(s.id);
+  // Student goal levels
+  const goalIdArr = useMemo(() => goalId ? [goalId] : [], [goalId]);
+  const { data: studentGoalLevels = {} } = useStudentGoalLevels(goalIdArr);
+  const setLevel = useSetStudentGoalLevel();
+
+  // Resolve available levels from this goal's first criterion, or defaults
+  const availableLevels = useMemo(() => {
+    if (goal?.evaluation_criteria?.length > 0) {
+      const descriptors = goal.evaluation_criteria[0].level_descriptors;
+      if (descriptors?.length > 0) {
+        return descriptors.map((ld) => ld.level);
       }
     }
-    return classStudents.map((s: any) => ({
-      student: s,
-      hasEvidence: proofStudentIds.has(s.id),
-    }));
-  }, [classStudents, linkedProofs]);
+    return DEFAULT_LEVEL_DESCRIPTORS.map((ld) => ld.level);
+  }, [goal]);
+
+  const handleLevelClick = (studentId: string) => {
+    if (!goalId || availableLevels.length === 0) return;
+    const currentLevel = studentGoalLevels[studentId]?.[goalId] || null;
+    const currentIdx = currentLevel ? availableLevels.indexOf(currentLevel) : -1;
+    const nextIdx = currentIdx + 1;
+    const nextLevel = nextIdx >= availableLevels.length ? null : availableLevels[nextIdx];
+    setLevel.mutate({ studentId, goalId, level: nextLevel });
+  };
 
   const handleDelete = async () => {
     if (!goalId) return;
@@ -96,7 +109,7 @@ export default function G02GoalDetail() {
   };
 
   if (isLoading || !goal) {
-    return <AppLayout><div className="text-center py-12 text-muted-foreground">Načítání...</div></AppLayout>;
+    return <AppLayout><div className="text-center py-12 text-muted-foreground">Načítání…</div></AppLayout>;
   }
 
   return (
@@ -172,28 +185,79 @@ export default function G02GoalDetail() {
           </div>
         )}
 
-        {/* Goal coverage per student */}
-        {studentCoverage.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold mb-3">Pokrytí cíle</h2>
-            <div className="flex flex-wrap gap-2">
-              {studentCoverage.map(({ student, hasEvidence }) => (
-                <Link
-                  key={student.id}
-                  to={`/student-profiles/${student.id}`}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-sm hover:bg-accent transition-colors"
-                >
-                  {hasEvidence ? (
-                    <Check className="h-3.5 w-3.5 text-green-600" />
-                  ) : (
-                    <Minus className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                  {getStudentDisplayName(student)}
-                </Link>
-              ))}
+        {/* Student levels for this goal */}
+        {classStudents.length > 0 && goalId && (() => {
+          const getLevelColor = (level: string) => {
+            const idx = availableLevels.indexOf(level);
+            if (idx < 0) return "bg-muted text-muted-foreground border-border";
+            const len = availableLevels.length;
+            if (len <= 1) return "bg-green-100 text-green-700 border-green-200";
+            if (len === 2) return idx === 0
+              ? "bg-red-100 text-red-700 border-red-200"
+              : "bg-green-100 text-green-700 border-green-200";
+            if (len === 3) {
+              if (idx === 0) return "bg-red-100 text-red-700 border-red-200";
+              if (idx === 1) return "bg-yellow-100 text-yellow-700 border-yellow-200";
+              return "bg-green-100 text-green-700 border-green-200";
+            }
+            // 4 levels: red, orange, yellow, green
+            if (idx === 0) return "bg-red-100 text-red-700 border-red-200";
+            if (idx === 1) return "bg-orange-100 text-orange-700 border-orange-200";
+            if (idx === 2) return "bg-yellow-100 text-yellow-700 border-yellow-200";
+            return "bg-green-100 text-green-700 border-green-200";
+          };
+
+          return (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold mb-3">Úroveň žáků</h2>
+              <div className="flex flex-wrap gap-2">
+                {[...classStudents]
+                  .sort((a: any, b: any) => a.last_name.localeCompare(b.last_name))
+                  .map((student: any) => {
+                    const level = studentGoalLevels[student.id]?.[goalId] || null;
+                    return (
+                      <button
+                        key={student.id}
+                        onClick={() => handleLevelClick(student.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors cursor-pointer hover:scale-[1.03] ${
+                          level
+                            ? getLevelColor(level)
+                            : "border-border bg-card text-muted-foreground hover:bg-accent"
+                        }`}
+                        title={
+                          level
+                            ? `${getStudentDisplayName(student)}: ${level} — klikněte pro změnu`
+                            : `${getStudentDisplayName(student)}: nenastaveno — klikněte pro nastavení`
+                        }
+                      >
+                        {level ? (
+                          <span className="font-semibold text-xs w-4 text-center">
+                            {level.charAt(0).toUpperCase()}
+                          </span>
+                        ) : (
+                          <Minus className="h-3.5 w-3.5" />
+                        )}
+                        {getStudentDisplayName(student)}
+                      </button>
+                    );
+                  })}
+              </div>
+              {availableLevels.length > 0 && (
+                <div className="flex items-center gap-4 mt-2 text-[10px] text-muted-foreground flex-wrap">
+                  <span className="text-muted-foreground/60">Kliknutím měníte úroveň:</span>
+                  {availableLevels.map((lvl) => (
+                    <span key={lvl} className="flex items-center gap-1">
+                      <span
+                        className={`inline-block w-2.5 h-2.5 rounded-sm border ${getLevelColor(lvl)}`}
+                      />
+                      {lvl}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Linked proofs */}
         <div>

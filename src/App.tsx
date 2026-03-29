@@ -35,6 +35,7 @@ import NotFound from "./pages/NotFound";
 import K01Courses from "./pages/K01Courses";
 import K02CreateCourse from "./pages/K02CreateCourse";
 import K03CourseDetail from "./pages/K03CourseDetail";
+import R01Rvp from "./pages/R01Rvp";
 import Z01Import from "./pages/Z01Import";
 import Z02FixAttachments from "./pages/Z02FixAttachments";
 
@@ -79,7 +80,8 @@ const App = () => (
             <Route path="/lessons/:lessonId/edit" element={<ProtectedRoute><D02CreateLesson /></ProtectedRoute>} />
             <Route path="/classes" element={<ProtectedRoute><F01Classes /></ProtectedRoute>} />
             <Route path="/capture" element={<ProtectedRoute><E01CaptureToolChooseClass /></ProtectedRoute>} />
-            <Route path="/capture/:classId" element={<ProtectedRoute><E02CaptureToolAddProofs /></ProtectedRoute>} />
+            <Route path="/capture/:courseId" element={<ProtectedRoute><E02CaptureToolAddProofs /></ProtectedRoute>} />
+            <Route path="/rvp" element={<ProtectedRoute><R01Rvp /></ProtectedRoute>} />
             <Route path="/import" element={<ProtectedRoute><Z01Import /></ProtectedRoute>} />
             <Route path="/fix-attachments" element={<ProtectedRoute><Z02FixAttachments /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
