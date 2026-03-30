@@ -254,6 +254,8 @@ export interface CourseStudentHeatmap {
   className: string;
   subjectName: string;
   classId: string;
+  totalGoals: number;
+  coveredGoals: number; // goals with at least 1 linked proof
   students: {
     id: string;
     firstName: string;
@@ -434,12 +436,17 @@ export function useCourseStudentHeatmap() {
         // Sort: fewest proofs first so teacher sees who needs attention
         studentData.sort((a, b) => a.proofCount - b.proofCount || a.lastName.localeCompare(b.lastName));
 
+        // Goal coverage: how many of this course's goals have at least 1 proof
+        const coveredGoals = gIds.filter((gId) => (proofGoalMap[gId] || []).length > 0).length;
+
         return {
           courseId: course.id,
           courseName: course.name,
           className: (course.classes as any)?.name || "",
           subjectName: (course.subjects as any)?.name || "",
           classId: course.class_id,
+          totalGoals: gIds.length,
+          coveredGoals,
           students: studentData,
         } as CourseStudentHeatmap;
       });

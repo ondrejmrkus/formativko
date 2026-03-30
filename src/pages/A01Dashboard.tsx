@@ -2,21 +2,16 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Link } from "react-router-dom";
 import {
   Camera,
-  FileText,
   BookOpen,
   Target,
-  UserX,
   ChevronRight,
-  Plus,
   CalendarDays,
   GraduationCap,
   Layers,
   CheckCircle2,
 } from "lucide-react";
 import { useProfile } from "@/hooks/useProfile";
-import { useAuth } from "@/contexts/AuthContext";
 import { useStudents } from "@/hooks/useStudents";
-import { useEvaluationGroups } from "@/hooks/useEvaluations";
 import { useClasses } from "@/hooks/useClasses";
 import { useCourses } from "@/hooks/useCourses";
 import { useGoals } from "@/hooks/useGoals";
@@ -25,12 +20,53 @@ import {
   useTodaysLessons,
   useNextLesson,
   useLessonGoalCounts,
-  useClassGoalCoverage,
-  useProofsThisWeek,
   useCourseStudentHeatmap,
   useHasProofs,
 } from "@/hooks/useDashboard";
 import eliImage from "@/assets/Eli.svg";
+
+/**
+ * Convert a Czech first name to vocative case (5. pád).
+ * Covers the most common patterns for Czech first names.
+ */
+function toVocative(name: string): string {
+  if (!name || name.length < 2) return name;
+
+  // Names ending in -ia, -ie, -ie → unchanged (Marie, Lucie, Sofie)
+  if (/i[eaě]$/i.test(name)) return name;
+
+  // Names ending in -a → -o (Ondra→Ondro, Honza→Honzo, Eva→Evo, Jana→Jano)
+  if (name.endsWith("a")) return name.slice(0, -1) + "o";
+
+  // Names ending in -e, -ě, -i, -í, -o → unchanged
+  if (/[eěiíoó]$/i.test(name)) return name;
+
+  // Names ending in -ek → -ku (Marek→Marku, Radek→Radku, Zdeněk→Zdeňku)
+  if (name.endsWith("ek")) return name.slice(0, -2) + "ku";
+  if (name.endsWith("ěk")) return name.slice(0, -2) + "ňku";
+
+  // Names ending in -el → -le (Pavel→Pavle)
+  if (name.endsWith("el")) return name.slice(0, -2) + "le";
+
+  // Names ending in soft/hushing consonants → add -i
+  // (Tomáš→Tomáši, Lukáš→Lukáši, Miloš→Miloši, Matouš→Matouši)
+  if (/[šžčřďťň]$/.test(name)) return name + "i";
+
+  // Names ending in -ec → -če (but rare for first names)
+  if (name.endsWith("ec")) return name.slice(0, -2) + "če";
+
+  // Names ending in -r after consonant → -ře (Petr→Petře, Alexandr→Alexandre... well Petře)
+  if (/[^aeiouáéíóúůýě]r$/i.test(name)) return name.slice(0, -1) + "ře";
+
+  // Names ending in -k (not -ek, handled above) → -ku (Erik→Eriku)
+  if (name.endsWith("k")) return name.slice(0, -1) + "ku";
+
+  // Default for other consonants → add -e
+  // (Jan→Jane, Adam→Adame, Filip→Filipe, Jakub→Jakube, David→Davide)
+  if (/[bcdfghjlmnprstvzBCDFGHJLMNPRSTVZ]$/.test(name)) return name + "e";
+
+  return name;
+}
 
 type OnboardingStep = 1 | 2 | 3 | 4 | 5 | null;
 
@@ -50,10 +86,8 @@ function getOnboardingStep(
 }
 
 export default function A01Dashboard() {
-  const { user } = useAuth();
   const { displayName } = useProfile();
   const { data: allStudents = [] } = useStudents();
-  const { data: evaluationGroups = [] } = useEvaluationGroups();
   const { data: classes = [] } = useClasses();
   const { data: courses = [] } = useCourses();
   const { data: goals = [] } = useGoals();
@@ -66,12 +100,7 @@ export default function A01Dashboard() {
   const { data: lessonGoalCounts = {} } = useLessonGoalCounts(
     todaysLessons.map((l) => l.id)
   );
-  const { data: classProgress = [] } = useClassGoalCoverage();
-  const { data: proofsThisWeek = 0 } = useProofsThisWeek();
   const { data: courseHeatmaps = [] } = useCourseStudentHeatmap();
-
-  // Classes with today's lessons (for smart capture)
-  const todayClassIds = new Set(todaysLessons.map((l) => l.class_id).filter(Boolean));
 
   // Onboarding state
   const step = getOnboardingStep(
@@ -91,21 +120,17 @@ export default function A01Dashboard() {
     ? `/lessons/create?courseId=${firstCourse.id}`
     : "/lessons/create";
 
+  const hour = new Date().getHours();
+  const greeting = hour < 9 ? "Dobré ráno" : hour < 18 ? "Dobrý den" : "Dobrý večer";
+
   return (
     <AppLayout>
       <div className="max-w-3xl mx-auto space-y-8">
         {/* Greeting */}
         <div>
           <h1 className="text-2xl font-bold">
-            Dobrý den{displayName ? `, ${displayName}` : ""}!
+            {greeting}{displayName ? `, ${toVocative(displayName)}` : ""}!
           </h1>
-          {step === null && (
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {proofsThisWeek > 0
-                ? `Tento týden: ${proofsThisWeek} ${proofsThisWeek === 1 ? "důkaz" : proofsThisWeek < 5 ? "důkazy" : "důkazů"}. Skvělá práce!`
-                : "Jak vám mohu dnes pomoci?"}
-            </p>
-          )}
         </div>
 
         {/* === ONBOARDING === */}
@@ -271,7 +296,7 @@ export default function A01Dashboard() {
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
                 >
                   <Camera className="h-4 w-4" />
-                  Zachytit důkaz
+                  Přidat důkaz
                 </Link>
               </div>
             )}
@@ -327,7 +352,7 @@ export default function A01Dashboard() {
                               className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                             >
                               <Camera className="h-3 w-3" />
-                              Zachytit
+                              Přidat důkazy
                             </Link>
                           )}
                         </div>
@@ -366,32 +391,60 @@ export default function A01Dashboard() {
               </div>
             ) : null}
 
-            {/* === STUDENT HEATMAP PER COURSE === */}
+            {/* === COURSE CARDS === */}
             {courseHeatmaps.filter((ch) => ch.students.length > 0).length > 0 && (
               <div>
-                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2">
-                  <UserX className="h-4 w-4" />
-                  Žáci podle kurzů
-                </h2>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                    <Layers className="h-4 w-4" />
+                    Vaše kurzy
+                  </h2>
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-100 border border-red-200" />
+                      0 důkazů
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm bg-yellow-100 border border-yellow-200" />
+                      1–2
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm bg-green-100 border border-green-200" />
+                      3+
+                    </span>
+                  </div>
+                </div>
                 <div className="space-y-4">
                   {courseHeatmaps
                     .filter((ch) => ch.students.length > 0)
                     .map((ch) => (
                       <div key={ch.courseId} className="rounded-xl bg-card border border-border p-4">
-                        <Link
-                          to={`/courses/${ch.courseId}`}
-                          className="flex items-center justify-between mb-3 hover:text-primary transition-colors"
-                        >
-                          <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <Link
+                            to={`/courses/${ch.courseId}`}
+                            className="min-w-0 hover:text-primary transition-colors"
+                          >
                             <p className="font-medium text-foreground text-sm">
                               {ch.courseName}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {ch.className} · {ch.subjectName}
+                              {ch.totalGoals > 0 && (
+                                <span>
+                                  {" · "}{ch.coveredGoals} / {ch.totalGoals}{" "}
+                                  {ch.totalGoals === 1 ? "cíl" : ch.totalGoals < 5 ? "cíle" : "cílů"}
+                                </span>
+                              )}
                             </p>
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                        </Link>
+                          </Link>
+                          <Link
+                            to={`/capture/${ch.courseId}`}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0 ml-3"
+                          >
+                            <Camera className="h-3.5 w-3.5" />
+                            Přidat důkazy
+                          </Link>
+                        </div>
                         <div className="flex flex-wrap gap-1.5">
                           {ch.students.map((s) => {
                             const bg =
@@ -413,118 +466,11 @@ export default function A01Dashboard() {
                             );
                           })}
                         </div>
-                        <div className="flex items-center gap-4 mt-2.5 text-[10px] text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-100 border border-red-200" />
-                            0 důkazů
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-yellow-100 border border-yellow-200" />
-                            1–2
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-green-100 border border-green-200" />
-                            3+
-                          </span>
-                        </div>
                       </div>
                     ))}
                 </div>
               </div>
             )}
-
-            {/* === QUICK CAPTURE === */}
-            <div>
-              <Link
-                to="/capture"
-                className="flex items-center gap-4 p-5 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 shrink-0">
-                  <Camera className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-lg font-semibold">Přidat důkazy</p>
-                  <p className="text-sm opacity-80">Spustit zachytávač pro třídu</p>
-                </div>
-              </Link>
-
-              {/* Course shortcuts — today's first */}
-              {courses.length > 0 && (
-                <div className="grid gap-2 sm:grid-cols-2 mt-3">
-                  {[...courses]
-                    .sort((a, b) => {
-                      const aToday = todayClassIds.has(a.class_id) ? 0 : 1;
-                      const bToday = todayClassIds.has(b.class_id) ? 0 : 1;
-                      return aToday - bToday || a.name.localeCompare(b.name);
-                    })
-                    .map((c) => {
-                      const isToday = todayClassIds.has(c.class_id);
-                      return (
-                        <Link
-                          key={c.id}
-                          to={`/capture/${c.id}`}
-                          className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                            isToday
-                              ? "bg-primary/5 border-primary/20 hover:border-primary/40"
-                              : "bg-card border-border hover:border-primary/30"
-                          }`}
-                        >
-                          <div>
-                            <p className="font-medium text-foreground text-sm">
-                              {c.name}
-                              {isToday && (
-                                <span className="ml-1.5 text-xs text-primary font-normal">
-                                  dnes
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {c.classes?.name}{c.subjects?.name ? ` · ${c.subjects.name}` : ""}
-                            </p>
-                          </div>
-                          <Camera className="h-3.5 w-3.5 text-primary shrink-0" />
-                        </Link>
-                      );
-                    })}
-                </div>
-              )}
-            </div>
-
-            {/* === QUICK ACTIONS === */}
-            <div>
-              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                Rychlé akce
-              </h2>
-              <div className="grid gap-2 sm:grid-cols-3">
-                <Link
-                  to="/evaluations/create"
-                  className="flex items-center gap-2.5 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                    <FileText className="h-4 w-4 text-primary" />
-                  </div>
-                  <p className="font-medium text-foreground text-sm">Slovní hodnocení</p>
-                </Link>
-                <Link
-                  to="/lessons/create"
-                  className="flex items-center gap-2.5 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                    <Plus className="h-4 w-4 text-primary" />
-                  </div>
-                  <p className="font-medium text-foreground text-sm">Nová lekce</p>
-                </Link>
-                <Link
-                  to="/goals/create"
-                  className="flex items-center gap-2.5 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors"
-                >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0">
-                    <Target className="h-4 w-4 text-primary" />
-                  </div>
-                  <p className="font-medium text-foreground text-sm">Nový cíl</p>
-                </Link>
-              </div>
-            </div>
           </>
         )}
       </div>

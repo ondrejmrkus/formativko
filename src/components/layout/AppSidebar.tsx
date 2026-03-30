@@ -27,7 +27,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { title: "Pomocník", url: "/", icon: Home, visibleWhen: "always" },
+  { title: "Hlavní panel", url: "/", icon: Home, visibleWhen: "always" },
   { title: "Kurzy", url: "/courses", icon: Layers, visibleWhen: "hasCourses" },
   { title: "Žáci", url: "/student-profiles", icon: Users, visibleWhen: "hasClasses" },
   { title: "Třídy", url: "/classes", icon: GraduationCap, visibleWhen: "hasClasses" },

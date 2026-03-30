@@ -65,6 +65,26 @@ export function useGoalsForClass(classId: string | undefined) {
   });
 }
 
+export function useGoalsForCourse(courseId: string | undefined) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["goals", "course", courseId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("educational_goals")
+        .select("*, subjects(id, name), evaluation_criteria(*)")
+        .eq("course_id", courseId!)
+        .order("title");
+      if (error) throw error;
+      return (data as GoalWithCriteria[]).map((g) => {
+        g.evaluation_criteria.sort((a, b) => a.sort_order - b.sort_order);
+        return g;
+      });
+    },
+    enabled: !!user && !!courseId,
+  });
+}
+
 export function useGoal(goalId: string | undefined) {
   const { user } = useAuth();
   return useQuery({

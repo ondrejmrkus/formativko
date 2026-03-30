@@ -68,10 +68,12 @@ export function useCreateProof() {
   return useMutation({
     mutationFn: async ({
       title, type, note, date, lessonId, studentIds, fileName, fileUrl, goalIds,
+      proofTypeId,
     }: {
       title: string; type: string; note?: string; date: string;
       lessonId?: string | null; studentIds: string[];
       fileName?: string; fileUrl?: string; goalIds?: string[];
+      proofTypeId?: string;
     }) => {
       const { data: proof, error } = await supabase
         .from("proofs_of_learning")
@@ -79,6 +81,7 @@ export function useCreateProof() {
           title, type, note: note || "", date,
           lesson_id: lessonId || null, teacher_id: user!.id,
           file_name: fileName || null, file_url: fileUrl || null,
+          proof_type_id: proofTypeId || null,
         })
         .select()
         .single();
