@@ -128,7 +128,7 @@ export default function D03LessonDetail() {
               <Button variant="default" size="sm" className="gap-1.5" asChild>
                 <Link to={`/capture/${lesson.course_id}?lesson=${lesson.id}`}>
                   <Camera className="h-4 w-4" />
-                  Zachycovat
+                  Přidat důkazy
                 </Link>
               </Button>
             )}

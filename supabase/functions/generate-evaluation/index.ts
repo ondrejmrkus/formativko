@@ -106,7 +106,7 @@ serve(async (req) => {
 
     // If no proofs, return immediately with noProofs flag
     if (proofs.length === 0) {
-      return new Response(JSON.stringify({ text: "", noProofs: true, proofCount: 0 }), {
+      return new Response(JSON.stringify({ text: "", noProofs: true, proofCount: 0, sourceProofs: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -264,6 +264,10 @@ serve(async (req) => {
 
     const rulesSection = customSystemPrompt || defaultRules;
 
+    const personExamples = person === "2"
+      ? 'Oslovuj žáka přímo (ty/tebe/tobě/tvůj). Příklad: „Zvládáš…", „Dokázal/a jsi…", „Zkus se zaměřit na…".'
+      : 'Piš o žákovi ve třetí osobě (on/ona/žák/žákyně). Příklad: „Žák zvládá…", „Dokázal/a…", „Měl/a by se zaměřit na…".';
+
     const systemPrompt = `${rulesSection}
 
 # Specifikace výstupu
@@ -273,6 +277,8 @@ serve(async (req) => {
 - **Forma:** ${config.person}
 - **Rozsah:** ${config.length}
 - Piš v češtině. Nepoužívej formátování markdown.
+- **DŮLEŽITÉ – dodržení formy osoby:** Celý text hodnocení MUSÍ být napsán v ${config.person}. ${personExamples}
+- **DŮLEŽITÉ – dodržení rozsahu:** Text MUSÍ mít přesně ${config.length}. Nepřekračuj tento rozsah. Pokud máš hodně důkazů, vyber ty nejdůležitější a shrň je stručně.
 - Pokud jsou k dispozici předchozí hodnocení, navázej na ně a zachyť vývoj žáka.
 - Pokud je k dispozici profil žáka, přizpůsob jazyk jeho komunikačním preferencím.${preferences ? `
 
@@ -291,7 +297,7 @@ ${profileSection}${goalSection}${previousSection}
 ## Důkazy o učení (${proofs.length})
 ${proofLines}
 
-Na základě těchto pravidel a vstupních dat napiš souvislý, smysluplný a motivující návrh slovního hodnocení.`;
+Na základě těchto pravidel a vstupních dat napiš souvislý, smysluplný a motivující návrh slovního hodnocení. Celý text piš v ${config.person}. Délka textu: přesně ${config.length}.`;
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
@@ -330,7 +336,15 @@ Na základě těchto pravidel a vstupních dat napiš souvislý, smysluplný a m
     const result = await aiResponse.json();
     const text = result.choices?.[0]?.message?.content || "";
 
-    return new Response(JSON.stringify({ text, noProofs: false, proofCount: proofs.length }), {
+    // Build source proofs summary for the frontend
+    const sourceProofs = proofs.map((p: any) => ({
+      id: p.id,
+      title: p.title,
+      type: p.type,
+      date: p.date,
+    }));
+
+    return new Response(JSON.stringify({ text, noProofs: false, proofCount: proofs.length, sourceProofs }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

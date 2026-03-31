@@ -190,10 +190,19 @@ export default function G03CreateGoal() {
 
     setGeneratingCriteria(true);
     try {
-      // Collect existing level names if user has customized them
+      // Collect existing level names if user has customized them (not just defaults)
       const existingLevels = criteria[0]?.level_descriptors
         ?.map((ld) => ld.level)
         .filter((l) => l.trim());
+      const defaultNames = DEFAULT_LEVEL_DESCRIPTORS.map((d) => d.level);
+      const isDefaultLevels =
+        existingLevels?.length === defaultNames.length &&
+        existingLevels.every((l, i) => l === defaultNames[i]);
+      const hasThematicPlan = !!courseContext?.thematic_plan_file_url;
+      // Don't send default level names when a thematic plan exists — let the AI extract levels from the plan
+      const sendLevelNames =
+        existingLevels && existingLevels.length > 0 && (!hasThematicPlan || !isDefaultLevels);
+
       const selectedSubject = subjects.find((s) => s.id === selectedSubjectId);
 
       const selectedClass = classes.find((c) => c.id === selectedClassId);
@@ -202,8 +211,9 @@ export default function G03CreateGoal() {
           goalTitle: title.trim(),
           goalDescription: description.trim() || undefined,
           subject: selectedSubject?.name || undefined,
-          levelNames: existingLevels && existingLevels.length > 0 ? existingLevels : undefined,
+          levelNames: sendLevelNames ? existingLevels : undefined,
           className: selectedClass?.name || undefined,
+          thematicPlanFileUrl: hasThematicPlan ? courseContext.thematic_plan_file_url : undefined,
         },
       });
 

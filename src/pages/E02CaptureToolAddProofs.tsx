@@ -206,13 +206,6 @@ export default function E02CaptureToolAddProofs() {
           </button>
         );
       })}
-      <button
-        onClick={() => { setManageMode(true); setActiveProofTypeId(null); }}
-        className="flex flex-col items-center gap-1 p-2 rounded-lg transition-colors hover:bg-accent lg:aspect-square lg:justify-center lg:gap-2 lg:border lg:border-dashed lg:border-border lg:w-[100px]"
-      >
-        <Settings className="h-5 w-5 text-muted-foreground" />
-        <span className="text-xs text-muted-foreground">Upravit</span>
-      </button>
     </div>
   );
 
@@ -298,6 +291,13 @@ export default function E02CaptureToolAddProofs() {
             className="px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors"
           >
             {selectedStudents.length === students.length ? "Zrušit vše" : "Vybrat vše"}
+          </button>
+          <button
+            onClick={() => { setManageMode(!manageMode); setActiveProofTypeId(null); }}
+            className={`p-2 rounded-lg transition-colors ${manageMode ? "bg-accent" : "hover:bg-accent"}`}
+            title="Upravit typy důkazů"
+          >
+            <Settings className="h-5 w-5 text-muted-foreground" />
           </button>
           <button
             onClick={() => setShowSeatingEditor(true)}

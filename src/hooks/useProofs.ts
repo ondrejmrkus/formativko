@@ -103,6 +103,7 @@ export function useCreateProof() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["proofs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
@@ -121,6 +122,7 @@ export function useUpdateProof() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["proofs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
@@ -136,6 +138,7 @@ export function useDeleteProof() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["proofs"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }

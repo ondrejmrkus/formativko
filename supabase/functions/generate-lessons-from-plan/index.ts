@@ -2,6 +2,15 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getRvpContext } from "../_shared/rvp/rvp.ts";
 
+function bytesToBase64(bytes: Uint8Array): string {
+  const CHUNK = 0x8000;
+  const parts: string[] = [];
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    parts.push(String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK))));
+  }
+  return btoa(parts.join(""));
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -19,7 +28,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await anonClient.auth.getUser(authHeader.replace("Bearer ", ""));
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { fileUrl, subject, className } = await req.json();
+    const { fileUrl, subject, className, count } = await req.json();
     if (!fileUrl) throw new Error("fileUrl is required");
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
@@ -33,13 +42,14 @@ serve(async (req) => {
     const mimeType = fileResponse.headers.get("content-type") || "application/octet-stream";
 
     const isImage = mimeType.startsWith("image/");
+    const isPdf = mimeType === "application/pdf";
 
     const rvpContext = getRvpContext(className);
 
     const systemPrompt = `Jsi zkušený český pedagog. Analyzuj přiložený tematický plán a navrhni lekce (vyučovací hodiny/bloky) pokrývající klíčová témata.
 
 Pravidla:
-- Navrhni 8-15 lekcí pokrývajících hlavní témata z plánu
+- Navrhni ${count ? `přesně ${count}` : "8-15"} lekcí pokrývajících hlavní témata z plánu
 - Každá lekce má výstižný název
 - K lekci navrhni plánované aktivity (stručný popis toho, co se bude dělat)
 - K lekci navrhni zaměření pozorování (na co se učitel zaměří při sledování žáků)
@@ -63,9 +73,41 @@ ${rvpContext}`;
 Analyzuj tento tematický plán a navrhni lekce.`;
 
     let messages: any[];
+    let uploadedFileId = "";
 
-    if (isImage) {
-      const base64 = btoa(String.fromCharCode(...fileBytes));
+    if (isPdf) {
+      // Upload PDF to OpenAI Files API, then reference by file_id
+      const formData = new FormData();
+      formData.append("file", new Blob([fileBytes], { type: "application/pdf" }), "thematic_plan.pdf");
+      formData.append("purpose", "assistants");
+
+      const uploadRes = await fetch("https://api.openai.com/v1/files", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        console.error("File upload error:", uploadRes.status, errText);
+        throw new Error("Failed to upload file for AI processing");
+      }
+
+      const uploadData = await uploadRes.json();
+      uploadedFileId = uploadData.id;
+
+      messages = [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: userPrompt },
+            { type: "file", file: { file_id: uploadedFileId } },
+          ],
+        },
+      ];
+    } else if (isImage) {
+      const base64 = bytesToBase64(fileBytes);
       messages = [
         { role: "system", content: systemPrompt },
         {
@@ -80,7 +122,7 @@ Analyzuj tento tematický plán a navrhni lekce.`;
         },
       ];
     } else {
-      // For PDFs and other documents, decode as text
+      // Text files
       const decoder = new TextDecoder("utf-8", { fatal: false });
       const textContent = decoder.decode(fileBytes);
       messages = [
@@ -99,11 +141,19 @@ Analyzuj tento tematický plán a navrhni lekce.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: (isPdf || isImage) ? "gpt-4o" : "gpt-4o-mini",
         messages,
         response_format: { type: "json_object" },
       }),
     });
+
+    // Clean up uploaded file (fire and forget)
+    if (uploadedFileId) {
+      fetch(`https://api.openai.com/v1/files/${uploadedFileId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+      }).catch(() => {});
+    }
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {

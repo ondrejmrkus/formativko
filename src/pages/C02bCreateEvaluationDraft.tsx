@@ -9,7 +9,7 @@ import { useCreateEvaluation, useUpdateEvaluation } from "@/hooks/useEvaluations
 import { getStudentDisplayName } from "@/hooks/useStudents";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, ArrowRight, AlertTriangle } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight, AlertTriangle, FileSearch } from "lucide-react";
 
 export default function C02bCreateEvaluationDraft() {
   const navigate = useNavigate();
@@ -22,11 +22,15 @@ export default function C02bCreateEvaluationDraft() {
 
   const {
     groupId, evaluationId, studentName, text: initialText, noProofs,
+    sourceProofs: initialSourceProofs,
     subject, period,
     selectedType, selectedClassId, selectedStudentId, selectedGoalId,
     dateFrom, dateTo, preferences, className, totalStudents,
     tone, person, evalLength, customSystemPrompt,
   } = state || {};
+
+  interface SourceProof { id: string; title: string; type: string; date: string; }
+  const [sourceProofs] = useState<SourceProof[]>(initialSourceProofs || []);
 
   const [draftText, setDraftText] = useState(initialText || "");
   const [generating, setGenerating] = useState(false);
@@ -106,6 +110,7 @@ export default function C02bCreateEvaluationDraft() {
           const studentNoProofs = data?.noProofs === true;
           const evalText = studentNoProofs ? "" : (data?.text || "");
           const evalStatus = studentNoProofs ? "insufficient" : "waiting";
+          const evalSourceProofIds = (data?.sourceProofs || []).map((p: any) => p.id);
 
           await createEval.mutateAsync({
             studentId: student.id,
@@ -115,6 +120,7 @@ export default function C02bCreateEvaluationDraft() {
             text: evalText,
             status: evalStatus,
             goalId: selectedGoalId,
+            sourceProofIds: evalSourceProofIds,
           });
         } catch (e: any) {
           console.error(`Error generating for ${student.id}:`, e);
@@ -174,6 +180,30 @@ export default function C02bCreateEvaluationDraft() {
               onChange={(e) => setDraftText(e.target.value)}
               placeholder={noProofs ? "Žádné hodnocení — nedostatek důkazů o učení." : ""}
             />
+
+            {sourceProofs.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-2">
+                  <FileSearch className="h-3.5 w-3.5" />
+                  Podklady ({sourceProofs.length})
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {sourceProofs.map((p) => (
+                    <a
+                      key={p.id}
+                      href={`/student-profiles/${selectedStudentId}/proof/${p.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-muted hover:bg-muted/80 text-foreground transition-colors"
+                      title={`${p.title} (${p.date})`}
+                    >
+                      <span className="truncate max-w-[180px]">{p.title}</span>
+                      <span className="text-muted-foreground shrink-0">{p.date}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3">

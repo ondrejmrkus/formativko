@@ -92,6 +92,8 @@ export default function K03CourseDetail() {
   const [suggestedLessons, setSuggestedLessons] = useState<SuggestedLesson[]>([]);
   const [savingGoalIdx, setSavingGoalIdx] = useState<number | null>(null);
   const [savingLessonIdx, setSavingLessonIdx] = useState<number | null>(null);
+  const [goalCount, setGoalCount] = useState("");
+  const [lessonCount, setLessonCount] = useState("");
 
   // Student-goal levels
   const goalIds = useMemo(() => goals.map((g: any) => g.id), [goals]);
@@ -252,11 +254,13 @@ export default function K03CourseDetail() {
     setGeneratingGoals(true);
     setSuggestedGoals([]);
     try {
+      const parsedGoalCount = parseInt(goalCount, 10);
       const { data, error } = await supabase.functions.invoke("generate-goals-from-plan", {
         body: {
           fileUrl: course.thematic_plan_file_url,
           subject: course.subjects?.name || undefined,
           className: course.classes?.name || undefined,
+          count: parsedGoalCount > 0 ? parsedGoalCount : undefined,
         },
       });
       if (error) throw error;
@@ -280,11 +284,13 @@ export default function K03CourseDetail() {
     setGeneratingLessons(true);
     setSuggestedLessons([]);
     try {
+      const parsedLessonCount = parseInt(lessonCount, 10);
       const { data, error } = await supabase.functions.invoke("generate-lessons-from-plan", {
         body: {
           fileUrl: course.thematic_plan_file_url,
           subject: course.subjects?.name || undefined,
           className: course.classes?.name || undefined,
+          count: parsedLessonCount > 0 ? parsedLessonCount : undefined,
         },
       });
       if (error) throw error;
@@ -409,7 +415,7 @@ export default function K03CourseDetail() {
             <Button variant="default" size="sm" className="gap-1.5" asChild>
               <Link to={`/capture/${course.id}`}>
                 <Camera className="h-4 w-4" />
-                Zachycovat
+                Přidat důkazy
               </Link>
             </Button>
             <Button variant="ghost" size="icon" asChild>
@@ -629,20 +635,31 @@ export default function K03CourseDetail() {
             </h2>
             <div className="flex items-center gap-2">
               {course.thematic_plan_file_url && suggestedGoals.length === 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 text-xs"
-                  onClick={handleGenerateGoals}
-                  disabled={generatingGoals}
-                >
-                  {generatingGoals ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  )}
-                  {generatingGoals ? "Generuji..." : "Generovat z plánu"}
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    placeholder="Počet"
+                    value={goalCount}
+                    onChange={(e) => setGoalCount(e.target.value)}
+                    className="w-16 h-8 text-xs text-center rounded-md border border-border bg-card px-1"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-xs"
+                    onClick={handleGenerateGoals}
+                    disabled={generatingGoals}
+                  >
+                    {generatingGoals ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                    {generatingGoals ? "Generuji..." : "Generovat z plánu"}
+                  </Button>
+                </div>
               )}
               {availableGoals.length > 0 && (
                 <Button size="sm" variant="outline" className="gap-1" onClick={() => setLinkGoalOpen(true)}>
@@ -810,20 +827,31 @@ export default function K03CourseDetail() {
             </h2>
             <div className="flex items-center gap-2">
               {course.thematic_plan_file_url && suggestedLessons.length === 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 text-xs"
-                  onClick={handleGenerateLessons}
-                  disabled={generatingLessons}
-                >
-                  {generatingLessons ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  )}
-                  {generatingLessons ? "Generuji..." : "Generovat z plánu"}
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    placeholder="Počet"
+                    value={lessonCount}
+                    onChange={(e) => setLessonCount(e.target.value)}
+                    className="w-16 h-8 text-xs text-center rounded-md border border-border bg-card px-1"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-xs"
+                    onClick={handleGenerateLessons}
+                    disabled={generatingLessons}
+                  >
+                    {generatingLessons ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                    {generatingLessons ? "Generuji..." : "Generovat z plánu"}
+                  </Button>
+                </div>
               )}
               {availableLessons.length > 0 && (
                 <Button size="sm" variant="outline" className="gap-1" onClick={() => setLinkLessonOpen(true)}>

@@ -149,6 +149,8 @@ export default function C02aCreateEvaluationDraft() {
 
       const noProofs = data?.noProofs === true;
       const text = noProofs ? "" : (data?.text || "");
+      const sourceProofs = data?.sourceProofs || [];
+      const sourceProofIds = sourceProofs.map((p: any) => p.id);
       const period = `${dateFrom} – ${dateTo}`;
       const status = noProofs ? "insufficient" : "waiting";
 
@@ -160,6 +162,7 @@ export default function C02aCreateEvaluationDraft() {
         text,
         status,
         goalId: selectedGoalId,
+        sourceProofIds,
       });
 
       // Navigate to C02b with all context
@@ -170,6 +173,7 @@ export default function C02aCreateEvaluationDraft() {
           studentName: getStudentDisplayName(student),
           text,
           noProofs,
+          sourceProofs,
           subject: typeName,
           period,
           // Params to pass back if teacher wants to retry

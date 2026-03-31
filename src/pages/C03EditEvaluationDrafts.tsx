@@ -3,9 +3,11 @@ import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, FileSearch } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useEvaluationsByGroup, useEvaluationGroups, useUpdateEvaluation } from "@/hooks/useEvaluations";
 import { useStudents, getStudentDisplayName } from "@/hooks/useStudents";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +35,23 @@ export default function C03EditEvaluationDrafts() {
 
   const activeEvalId = selectedEvalId || evaluations[0]?.id;
   const activeEval = evaluations.find((e) => e.id === activeEvalId);
+
+  // Fetch source proofs for the active evaluation
+  const activeProofIds: string[] = (activeEval as any)?.source_proof_ids || [];
+  const { data: sourceProofs = [] } = useQuery({
+    queryKey: ["source_proofs", activeEvalId, activeProofIds],
+    queryFn: async () => {
+      if (activeProofIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("proofs_of_learning")
+        .select("id, title, type, date")
+        .in("id", activeProofIds)
+        .order("date");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: activeProofIds.length > 0,
+  });
 
   const getStudent = (studentId: string) => allStudents.find((s) => s.id === studentId);
 
@@ -175,6 +194,30 @@ export default function C03EditEvaluationDrafts() {
                     value={getText(activeEvalId!)}
                     onChange={(e) => setLocalTexts((prev) => ({ ...prev, [activeEvalId!]: e.target.value }))}
                   />
+
+                  {sourceProofs.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 mb-2">
+                        <FileSearch className="h-3.5 w-3.5" />
+                        Podklady ({sourceProofs.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {sourceProofs.map((p: any) => (
+                          <a
+                            key={p.id}
+                            href={`/student-profiles/${activeEval!.student_id}/proof/${p.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-muted hover:bg-muted/80 text-foreground transition-colors"
+                            title={`${p.title} (${p.date})`}
+                          >
+                            <span className="truncate max-w-[180px]">{p.title}</span>
+                            <span className="text-muted-foreground shrink-0">{p.date}</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
