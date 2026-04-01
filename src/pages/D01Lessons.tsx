@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SearchBar } from "@/components/shared/SearchBar";
@@ -9,6 +9,11 @@ import { Link } from "react-router-dom";
 import { useLessons, type Lesson } from "@/hooks/useLessons";
 import { useClasses } from "@/hooks/useClasses";
 import { useSubjects } from "@/hooks/useSubjects";
+import { Pagination } from "@/components/shared/Pagination";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { ListSkeleton } from "@/components/shared/ListSkeleton";
+
+const PAGE_SIZE = 50;
 
 interface LessonSectionProps {
   title: string;
@@ -53,11 +58,13 @@ function LessonSection({ title, items, classes, showArrow = false, dimmed = fals
 }
 
 export default function D01Lessons() {
+  usePageTitle("Lekce");
   const { data: lessons = [], isLoading } = useLessons();
   const { data: classes = [] } = useClasses();
   const { data: allSubjects = [] } = useSubjects();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const [page, setPage] = useState(0);
 
   const toggleFilter = (group: string, option: string) => {
     setFilters((prev) => {
@@ -99,9 +106,16 @@ export default function D01Lessons() {
     return result;
   }, [lessons, search, filters, classes]);
 
-  const ongoing = filteredLessons.filter((l) => l.status === "ongoing");
-  const prepared = filteredLessons.filter((l) => l.status === "prepared");
-  const past = filteredLessons.filter((l) => l.status === "past");
+  useEffect(() => { setPage(0); }, [search, filters]);
+
+  const paginatedLessons = useMemo(
+    () => filteredLessons.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [filteredLessons, page]
+  );
+
+  const ongoing = paginatedLessons.filter((l) => l.status === "ongoing");
+  const prepared = paginatedLessons.filter((l) => l.status === "prepared");
+  const past = paginatedLessons.filter((l) => l.status === "past");
 
   return (
     <AppLayout>
@@ -137,7 +151,7 @@ export default function D01Lessons() {
         />
 
         {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Načítání…</div>
+          <ListSkeleton count={6} />
         ) : filteredLessons.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             {lessons.length === 0 ? (
@@ -159,6 +173,8 @@ export default function D01Lessons() {
             <LessonSection title="Proběhlé lekce" items={past} classes={classes} dimmed />
           </>
         )}
+
+        <Pagination page={page} pageSize={PAGE_SIZE} total={filteredLessons.length} onPageChange={setPage} />
       </div>
     </AppLayout>
   );

@@ -2,40 +2,22 @@ import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Upload, Check, ImageOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-
-interface ProofRow {
-  id: string;
-  title: string;
-  type: string;
-  date: string;
-  file_url: string | null;
-  file_name: string | null;
-}
+import { useProofsWithFiles } from "@/hooks/useProofs";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Z02FixAttachments() {
+  usePageTitle("Oprava příloh");
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState<string | null>(null);
   const [fixed, setFixed] = useState<Set<string>>(new Set());
 
-  const { data: proofs = [], isLoading } = useQuery({
-    queryKey: ["proofs-with-files", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("proofs_of_learning")
-        .select("id, title, type, date, file_url, file_name")
-        .in("type", ["camera", "file"])
-        .order("date", { ascending: false });
-      if (error) throw error;
-      return data as ProofRow[];
-    },
-    enabled: !!user,
-  });
+  const { data: proofs = [], isLoading } = useProofsWithFiles();
 
   const handleUpload = async (proof: ProofRow, file: File) => {
     setUploading(proof.id);

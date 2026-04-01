@@ -19,8 +19,10 @@ import { useSubjects, useDeleteSubject } from "@/hooks/useSubjects";
 import { useGoals } from "@/hooks/useGoals";
 import { useLessons } from "@/hooks/useLessons";
 import { useToast } from "@/hooks/use-toast";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function H01Subjects() {
+  usePageTitle("Předměty");
   const { data: subjects = [], isLoading } = useSubjects();
   const { data: goals = [] } = useGoals();
   const { data: lessons = [] } = useLessons();

@@ -3,14 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Home, BookOpen } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
 import { useTodaysLessons } from "@/hooks/useDashboard";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useClassStudentCounts } from "@/hooks/useClasses";
 import { useMemo } from "react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function E01CaptureToolChooseClass() {
+  usePageTitle("Zachytávač");
   const { data: courses = [], isLoading } = useCourses();
-  const { user } = useAuth();
   const { data: todaysLessons = [] } = useTodaysLessons();
 
   // Course IDs that have a lesson today (via class_id match)
@@ -23,19 +22,7 @@ export default function E01CaptureToolChooseClass() {
     );
   }, [todaysLessons, courses]);
 
-  const { data: counts = {} } = useQuery({
-    queryKey: ["class_student_counts", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("class_students")
-        .select("class_id");
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      data.forEach((r) => { map[r.class_id] = (map[r.class_id] || 0) + 1; });
-      return map;
-    },
-    enabled: !!user,
-  });
+  const { data: counts = {} } = useClassStudentCounts();
 
   // Sort: today's courses first, then alphabetically
   const sortedCourses = useMemo(() =>

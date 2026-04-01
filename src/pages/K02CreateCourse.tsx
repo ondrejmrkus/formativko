@@ -10,8 +10,10 @@ import { useSubjects, useCreateSubject } from "@/hooks/useSubjects";
 import { useCourse, useCreateCourse, useUpdateCourse } from "@/hooks/useCourses";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function K02CreateCourse() {
+  usePageTitle("Kurz");
   const { courseId } = useParams<{ courseId: string }>();
   const isEdit = !!courseId;
   const navigate = useNavigate();

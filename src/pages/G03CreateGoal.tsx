@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Plus, Trash2, GripVertical, Copy, Sparkles, Loader2, Check, X } from "lucide-react";
+import { Plus, Trash2, Copy, Sparkles, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,254 +16,249 @@ import { SearchBar } from "@/components/shared/SearchBar";
 import { Badge } from "@/components/ui/badge";
 import { useClasses } from "@/hooks/useClasses";
 import { useGoals, useGoal, useCreateGoal, useUpdateGoal } from "@/hooks/useGoals";
-import { useSubjects, useCreateSubject } from "@/hooks/useSubjects";
-import { useCourse } from "@/hooks/useCourses";
+import { useCourses, useCourse } from "@/hooks/useCourses";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DEFAULT_LEVEL_DESCRIPTORS, type LevelDescriptor } from "@/constants/goalLevels";
-
-interface CriterionForm {
-  description: string;
-  level_descriptors: LevelDescriptor[];
-}
+import { ShimmerField } from "@/components/ui/field-shimmer";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function G03CreateGoal() {
+  usePageTitle("Vzdělávací cíl");
   const { goalId } = useParams<{ goalId: string }>();
   const [searchParams] = useSearchParams();
   const courseIdParam = searchParams.get("courseId");
+  const rvpOutcome = searchParams.get("rvpOutcome");
+  const rvpSubject = searchParams.get("rvpSubject");
   const isEdit = !!goalId;
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: classes = [] } = useClasses();
-  const { data: courseContext } = useCourse(courseIdParam || undefined);
+  const { data: courses = [] } = useCourses();
+  const { data: courseFromParam } = useCourse(courseIdParam || undefined);
   const { data: existingGoal } = useGoal(isEdit ? goalId : undefined);
   const { data: allGoals = [] } = useGoals();
-  const { data: subjects = [] } = useSubjects();
   const createGoal = useCreateGoal();
   const updateGoal = useUpdateGoal();
-  const createSubject = useCreateSubject();
 
-  const [generatingCriteria, setGeneratingCriteria] = useState(false);
-  const [formulatingGoal, setFormulatingGoal] = useState(false);
-  const [suggestedTitle, setSuggestedTitle] = useState<string | null>(null);
-  const [suggestedDescription, setSuggestedDescription] = useState<string | null>(null);
+  /** Tracks which phase of AI generation is active */
+  const [genPhase, setGenPhase] = useState<"idle" | "formulating" | "criteria">("idle");
+  const generating = genPhase !== "idle";
   const [cloneOpen, setCloneOpen] = useState(false);
   const [cloneSearch, setCloneSearch] = useState("");
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
-  const [newSubjectName, setNewSubjectName] = useState("");
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [criteria, setCriteria] = useState<CriterionForm[]>([
-    { description: "", level_descriptors: DEFAULT_LEVEL_DESCRIPTORS.map((d) => ({ ...d })) },
-  ]);
+  const [levels, setLevels] = useState<LevelDescriptor[]>(
+    DEFAULT_LEVEL_DESCRIPTORS.map((d) => ({ ...d }))
+  );
+  const [criteriaTexts, setCriteriaTexts] = useState<string[]>([""]);
 
-  // Pre-fill from course context
+  // Resolve the selected course object
+  const selectedCourse = courses.find((c) => c.id === selectedCourseId) || null;
+
+  // Pre-fill from courseId param
   useEffect(() => {
-    if (courseContext && !isEdit) {
-      setSelectedClassId(courseContext.class_id);
-      setSelectedSubjectId(courseContext.subject_id);
+    if (courseIdParam && !isEdit) {
+      setSelectedCourseId(courseIdParam);
     }
-  }, [courseContext, isEdit]);
+  }, [courseIdParam, isEdit]);
+
+  // Pre-fill from RVP outcome
+  useEffect(() => {
+    if (rvpOutcome && !isEdit) {
+      setTitle(decodeURIComponent(rvpOutcome));
+    }
+  }, [rvpOutcome, isEdit]);
+
+  // Pre-fill course from RVP subject hint
+  useEffect(() => {
+    if (rvpSubject && !isEdit && courses.length > 0 && !selectedCourseId) {
+      const decoded = decodeURIComponent(rvpSubject);
+      const match = courses.find(
+        (c) => c.subjects?.name?.toLowerCase() === decoded.toLowerCase()
+      );
+      if (match) setSelectedCourseId(match.id);
+    }
+  }, [rvpSubject, isEdit, courses, selectedCourseId]);
 
   // Populate form when editing
   useEffect(() => {
     if (existingGoal) {
-      setSelectedClassId(existingGoal.class_id);
-      setSelectedSubjectId(existingGoal.subject_id);
       setTitle(existingGoal.title);
       setDescription(existingGoal.description);
+      // Find the course this goal belongs to
+      if (existingGoal.course_id) {
+        setSelectedCourseId(existingGoal.course_id);
+      } else {
+        // Legacy goal without course — try to find a matching course
+        const match = courses.find(
+          (c) =>
+            c.class_id === existingGoal.class_id &&
+            c.subject_id === existingGoal.subject_id
+        );
+        if (match) setSelectedCourseId(match.id);
+      }
       if (existingGoal.evaluation_criteria.length > 0) {
-        setCriteria(
-          existingGoal.evaluation_criteria.map((c) => ({
-            description: c.description,
-            level_descriptors: (c.level_descriptors || []).map((ld) => ({ ...ld })),
-          }))
+        const firstLevels = existingGoal.evaluation_criteria[0].level_descriptors;
+        if (firstLevels?.length > 0) {
+          setLevels(firstLevels.map((ld) => ({ ...ld })));
+        }
+        setCriteriaTexts(
+          existingGoal.evaluation_criteria.map((c) => c.description)
         );
       }
     }
-  }, [existingGoal]);
+  }, [existingGoal, courses]);
+
+  const updateLevel = (idx: number, field: "level" | "description", value: string) => {
+    setLevels((prev) =>
+      prev.map((ld, i) => (i === idx ? { ...ld, [field]: value } : ld))
+    );
+  };
+
+  const addLevel = () => {
+    setLevels((prev) => [...prev, { level: "", description: "" }]);
+  };
+
+  const removeLevel = (idx: number) => {
+    setLevels((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   const addCriterion = () => {
-    setCriteria((prev) => [
-      ...prev,
-      { description: "", level_descriptors: DEFAULT_LEVEL_DESCRIPTORS.map((d) => ({ ...d })) },
-    ]);
+    setCriteriaTexts((prev) => [...prev, ""]);
   };
 
-  const removeCriterion = (index: number) => {
-    setCriteria((prev) => prev.filter((_, i) => i !== index));
+  const removeCriterion = (idx: number) => {
+    setCriteriaTexts((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const updateCriterionDesc = (index: number, value: string) => {
-    setCriteria((prev) => prev.map((c, i) => (i === index ? { ...c, description: value } : c)));
+  const updateCriterion = (idx: number, value: string) => {
+    setCriteriaTexts((prev) => prev.map((c, i) => (i === idx ? value : c)));
   };
 
-  const updateLevelDesc = (criterionIdx: number, levelIdx: number, value: string) => {
-    setCriteria((prev) =>
-      prev.map((c, ci) =>
-        ci === criterionIdx
-          ? {
-              ...c,
-              level_descriptors: c.level_descriptors.map((ld, li) =>
-                li === levelIdx ? { ...ld, description: value } : ld
-              ),
-            }
-          : c
-      )
-    );
-  };
-
-  const updateLevelName = (criterionIdx: number, levelIdx: number, value: string) => {
-    setCriteria((prev) =>
-      prev.map((c, ci) =>
-        ci === criterionIdx
-          ? {
-              ...c,
-              level_descriptors: c.level_descriptors.map((ld, li) =>
-                li === levelIdx ? { ...ld, level: value } : ld
-              ),
-            }
-          : c
-      )
-    );
-  };
-
-  const addLevel = (criterionIdx: number) => {
-    setCriteria((prev) =>
-      prev.map((c, ci) =>
-        ci === criterionIdx
-          ? { ...c, level_descriptors: [...c.level_descriptors, { level: "", description: "" }] }
-          : c
-      )
-    );
-  };
-
-  const removeLevel = (criterionIdx: number, levelIdx: number) => {
-    setCriteria((prev) =>
-      prev.map((c, ci) =>
-        ci === criterionIdx
-          ? { ...c, level_descriptors: c.level_descriptors.filter((_, li) => li !== levelIdx) }
-          : c
-      )
-    );
-  };
-
-  const handleFormulateGoal = async () => {
+  /** Single AI action: formulate goal + generate criteria in one step */
+  const handleGenerate = async () => {
     if (!title.trim()) {
       toast({ title: "Nejdříve napište cíl svými slovy", variant: "destructive" });
       return;
     }
 
-    setFormulatingGoal(true);
-    setSuggestedTitle(null);
-    setSuggestedDescription(null);
+    setGenPhase("formulating");
     try {
-      const selectedSubject = subjects.find((s) => s.id === selectedSubjectId);
-      const selectedClass = classes.find((c) => c.id === selectedClassId);
-      const { data, error } = await supabase.functions.invoke("formulate-goal", {
-        body: {
-          rawGoal: title.trim(),
-          subject: selectedSubject?.name || undefined,
-          className: selectedClass?.name || undefined,
-        },
-      });
+      const subjectName = selectedCourse?.subjects?.name;
+      const className = classes.find((c) => c.id === selectedCourse?.class_id)?.name;
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      if (data.title) setSuggestedTitle(data.title);
-      if (data.description) setSuggestedDescription(data.description);
-    } catch (err: any) {
-      console.error("Formulate goal error:", err);
-      toast({ title: "Chyba při formulaci", description: err?.message, variant: "destructive" });
-    } finally {
-      setFormulatingGoal(false);
-    }
-  };
-
-  const handleGenerateCriteria = async () => {
-    if (!title.trim()) {
-      toast({ title: "Nejdříve zadejte název cíle", variant: "destructive" });
-      return;
-    }
-
-    setGeneratingCriteria(true);
-    try {
-      // Collect existing level names if user has customized them (not just defaults)
-      const existingLevels = criteria[0]?.level_descriptors
-        ?.map((ld) => ld.level)
-        .filter((l) => l.trim());
+      const hasThematicPlan = !!selectedCourse?.thematic_plan_file_url;
       const defaultNames = DEFAULT_LEVEL_DESCRIPTORS.map((d) => d.level);
+      const currentNames = levels.map((l) => l.level).filter((l) => l.trim());
       const isDefaultLevels =
-        existingLevels?.length === defaultNames.length &&
-        existingLevels.every((l, i) => l === defaultNames[i]);
-      const hasThematicPlan = !!courseContext?.thematic_plan_file_url;
-      // Don't send default level names when a thematic plan exists — let the AI extract levels from the plan
+        currentNames.length === defaultNames.length &&
+        currentNames.every((l, i) => l === defaultNames[i]);
       const sendLevelNames =
-        existingLevels && existingLevels.length > 0 && (!hasThematicPlan || !isDefaultLevels);
+        currentNames.length > 0 && (!hasThematicPlan || !isDefaultLevels);
 
-      const selectedSubject = subjects.find((s) => s.id === selectedSubjectId);
+      // Step 1: Formulate goal
+      const { data: formData, error: formErr } = await supabase.functions.invoke(
+        "formulate-goal",
+        {
+          body: {
+            rawGoal: title.trim(),
+            subject: subjectName || undefined,
+            className: className || undefined,
+          },
+        }
+      );
 
-      const selectedClass = classes.find((c) => c.id === selectedClassId);
-      const { data, error } = await supabase.functions.invoke("generate-criteria", {
-        body: {
-          goalTitle: title.trim(),
-          goalDescription: description.trim() || undefined,
-          subject: selectedSubject?.name || undefined,
-          levelNames: sendLevelNames ? existingLevels : undefined,
-          className: selectedClass?.name || undefined,
-          thematicPlanFileUrl: hasThematicPlan ? courseContext.thematic_plan_file_url : undefined,
-        },
-      });
+      if (formErr) throw formErr;
+      if (formData?.error) throw new Error(formData.error);
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      const refinedTitle = formData?.title || title.trim();
+      const refinedDescription = formData?.description || description.trim();
+      setTitle(refinedTitle);
+      if (refinedDescription) setDescription(refinedDescription);
 
-      if (data.criteria && data.criteria.length > 0) {
-        setCriteria(
-          data.criteria.map((c: any) => ({
-            description: c.description || "",
-            level_descriptors: (c.level_descriptors || []).map((ld: any) => ({
+      // Title+description done, now generating criteria
+      setGenPhase("criteria");
+
+      // Step 2: Generate criteria
+      const { data: critData, error: critErr } = await supabase.functions.invoke(
+        "generate-criteria",
+        {
+          body: {
+            goalTitle: refinedTitle,
+            goalDescription: refinedDescription || undefined,
+            subject: subjectName || undefined,
+            levelNames: sendLevelNames ? currentNames : undefined,
+            className: className || undefined,
+            thematicPlanFileUrl: hasThematicPlan
+              ? selectedCourse.thematic_plan_file_url
+              : undefined,
+          },
+        }
+      );
+
+      if (critErr) throw critErr;
+      if (critData?.error) throw new Error(critData.error);
+
+      if (critData?.criteria?.length > 0) {
+        const aiLevels = critData.criteria[0].level_descriptors;
+        if (aiLevels?.length > 0) {
+          setLevels(
+            aiLevels.map((ld: { level: string; description: string }) => ({
               level: ld.level || "",
               description: ld.description || "",
-            })),
-          }))
+            }))
+          );
+        }
+        setCriteriaTexts(
+          critData.criteria.map((c: { description: string }) => c.description || "")
         );
-        toast({ title: "Kritéria vygenerována" });
       }
-    } catch (err: any) {
-      console.error("Generate criteria error:", err);
-      toast({ title: "Chyba při generování", description: err?.message, variant: "destructive" });
+
+      toast({ title: "Cíl a kritéria vygenerovány" });
+    } catch (err: unknown) {
+      console.error("Generate error:", err);
+      toast({
+        title: "Chyba při generování",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
     } finally {
-      setGeneratingCriteria(false);
+      setGenPhase("idle");
     }
   };
 
-  const handleClone = async (goalId: string) => {
+  const handleClone = async (cloneGoalId: string) => {
     try {
       const { data, error } = await supabase
         .from("educational_goals")
         .select("*, evaluation_criteria(*)")
-        .eq("id", goalId)
+        .eq("id", cloneGoalId)
         .single();
       if (error) throw error;
-      setSelectedSubjectId(data.subject_id);
+      // Find matching course for the cloned goal
+      const match = courses.find(
+        (c) =>
+          c.class_id === data.class_id && c.subject_id === data.subject_id
+      );
+      if (match) setSelectedCourseId(match.id);
       setTitle(data.title);
       setDescription(data.description || "");
-      const crit = (data.evaluation_criteria || [])
-        .sort((a: any, b: any) => a.sort_order - b.sort_order);
+      const crit = (data.evaluation_criteria || []).sort(
+        (a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order
+      );
       if (crit.length > 0) {
-        setCriteria(
-          crit.map((c: any) => ({
-            description: c.description,
-            level_descriptors: (c.level_descriptors || []).map((ld: any) => ({ ...ld })),
-          }))
-        );
+        const firstLevels = crit[0].level_descriptors || [];
+        if (firstLevels.length > 0) {
+          setLevels(firstLevels.map((ld: LevelDescriptor) => ({ ...ld })));
+        }
+        setCriteriaTexts(crit.map((c: { description: string }) => c.description));
       }
       setCloneOpen(false);
       toast({ title: "Cíl naklonován do formuláře" });
-    } catch {
+    } catch (err) {
+      console.error("Chyba při klonování", err);
       toast({ title: "Chyba při klonování", variant: "destructive" });
     }
   };
@@ -271,16 +266,15 @@ export default function G03CreateGoal() {
   const filteredCloneGoals = allGoals.filter((g) => {
     if (!cloneSearch.trim()) return true;
     const q = cloneSearch.toLowerCase();
-    return g.title.toLowerCase().includes(q) || (g.subjects?.name || "").toLowerCase().includes(q);
+    return (
+      g.title.toLowerCase().includes(q) ||
+      (g.subjects?.name || "").toLowerCase().includes(q)
+    );
   });
 
   const handleSave = async () => {
-    if (!selectedClassId) {
-      toast({ title: "Vyberte třídu", variant: "destructive" });
-      return;
-    }
-    if (!selectedSubjectId) {
-      toast({ title: "Vyberte předmět", variant: "destructive" });
+    if (!selectedCourse) {
+      toast({ title: "Vyberte kurz", variant: "destructive" });
       return;
     }
     if (!title.trim()) {
@@ -288,11 +282,12 @@ export default function G03CreateGoal() {
       return;
     }
 
-    const validCriteria = criteria
-      .filter((c) => c.description.trim())
+    const validLevels = levels.filter((ld) => ld.level.trim());
+    const validCriteria = criteriaTexts
+      .filter((c) => c.trim())
       .map((c, i) => ({
-        description: c.description.trim(),
-        level_descriptors: c.level_descriptors.filter((ld) => ld.level.trim()),
+        description: c.trim(),
+        level_descriptors: validLevels,
         sort_order: i,
       }));
 
@@ -300,33 +295,37 @@ export default function G03CreateGoal() {
       if (isEdit) {
         await updateGoal.mutateAsync({
           id: goalId!,
-          classId: selectedClassId,
+          classId: selectedCourse.class_id,
           title: title.trim(),
           description: description.trim(),
-          subjectId: selectedSubjectId,
+          subjectId: selectedCourse.subject_id,
           criteria: validCriteria,
-          courseId: courseIdParam ?? existingGoal?.course_id ?? null,
+          courseId: selectedCourse.id,
         });
         toast({ title: "Cíl upraven" });
         navigate(`/goals/${goalId}`);
       } else {
-        const goal = await createGoal.mutateAsync({
-          classId: selectedClassId,
+        await createGoal.mutateAsync({
+          classId: selectedCourse.class_id,
           title: title.trim(),
           description: description.trim(),
-          subjectId: selectedSubjectId,
+          subjectId: selectedCourse.subject_id,
           criteria: validCriteria,
-          courseId: courseIdParam,
+          courseId: selectedCourse.id,
         });
         toast({ title: "Cíl vytvořen" });
-        navigate("/");
+        navigate(`/courses/${selectedCourse.id}`);
       }
-    } catch {
+    } catch (err) {
+      console.error("Chyba při ukládání", err);
       toast({ title: "Chyba při ukládání", variant: "destructive" });
     }
   };
 
   const isPending = createGoal.isPending || updateGoal.isPending;
+
+  // Breadcrumb context
+  const breadcrumbCourse = selectedCourse || courseFromParam;
 
   return (
     <AppLayout>
@@ -334,34 +333,41 @@ export default function G03CreateGoal() {
         <AppBreadcrumb
           items={[
             { label: "Úvod", href: "/" },
-            ...(courseContext
+            ...(breadcrumbCourse
               ? [
                   { label: "Kurzy", href: "/courses" },
-                  { label: courseContext.name, href: `/courses/${courseContext.id}` },
+                  {
+                    label: breadcrumbCourse.name,
+                    href: `/courses/${breadcrumbCourse.id}`,
+                  },
                 ]
               : [{ label: "Cíle", href: "/goals" }]),
             { label: isEdit ? "Upravit cíl" : "Nový cíl" },
           ]}
         />
 
-        <h1 className="text-2xl font-bold mb-6">{isEdit ? "Upravit vzdělávací cíl" : "Nový vzdělávací cíl"}</h1>
+        <h1 className="text-2xl font-bold mb-6">
+          {isEdit ? "Upravit vzdělávací cíl" : "Nový vzdělávací cíl"}
+        </h1>
 
         <div className="space-y-6">
-          {/* Class selector */}
+          {/* Course selector */}
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
-              Třída
+              Kurz
             </label>
             <div className="flex flex-wrap gap-2">
-              {classes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Zatím nemáte žádné třídy.</p>
+              {courses.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Zatím nemáte žádné kurzy.
+                </p>
               ) : (
-                classes.map((c) => (
+                courses.map((c) => (
                   <button
                     key={c.id}
-                    onClick={() => setSelectedClassId(c.id)}
+                    onClick={() => setSelectedCourseId(c.id)}
                     className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
-                      selectedClassId === c.id
+                      selectedCourseId === c.id
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border bg-card text-muted-foreground hover:border-primary/30"
                     }`}
@@ -371,75 +377,25 @@ export default function G03CreateGoal() {
                 ))
               )}
             </div>
+            {selectedCourse && (
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {classes.find((cl) => cl.id === selectedCourse.class_id)?.name}
+                {selectedCourse.subjects?.name && ` · ${selectedCourse.subjects.name}`}
+              </p>
+            )}
             {!isEdit && allGoals.length > 0 && (
-              <Button variant="outline" className="mt-2 gap-1" onClick={() => setCloneOpen(true)}>
+              <Button
+                variant="outline"
+                className="mt-2 gap-1"
+                onClick={() => setCloneOpen(true)}
+              >
                 <Copy className="h-4 w-4" />
                 Klonovat z existujícího cíle
               </Button>
             )}
           </div>
 
-          {/* Subject */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
-              Předmět
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {subjects.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setSelectedSubjectId(s.id)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
-                    selectedSubjectId === s.id
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-card text-muted-foreground hover:border-primary/30"
-                  }`}
-                >
-                  {s.name}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 mt-2">
-              <Input
-                placeholder="Nový předmět..."
-                className="bg-card flex-1"
-                value={newSubjectName}
-                onChange={(e) => setNewSubjectName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    if (newSubjectName.trim()) {
-                      createSubject.mutate({ name: newSubjectName.trim() }, {
-                        onSuccess: (data) => {
-                          setSelectedSubjectId(data.id);
-                          setNewSubjectName("");
-                        },
-                      });
-                    }
-                  }
-                }}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!newSubjectName.trim() || createSubject.isPending}
-                onClick={() => {
-                  if (newSubjectName.trim()) {
-                    createSubject.mutate({ name: newSubjectName.trim() }, {
-                      onSuccess: (data) => {
-                        setSelectedSubjectId(data.id);
-                        setNewSubjectName("");
-                      },
-                    });
-                  }
-                }}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Title */}
+          {/* Title + AI generate */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -449,47 +405,28 @@ export default function G03CreateGoal() {
                 variant="outline"
                 size="sm"
                 className="gap-1.5 text-xs"
-                onClick={handleFormulateGoal}
-                disabled={formulatingGoal || !title.trim()}
+                onClick={handleGenerate}
+                disabled={generating || !title.trim()}
               >
-                {formulatingGoal ? (
+                {generating ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Sparkles className="h-3.5 w-3.5" />
                 )}
-                {formulatingGoal ? "Formuluji..." : "Formulovat pomocí AI"}
+                {generating ? "Generuji..." : "Vytvořit pomocí AI"}
               </Button>
             </div>
-            <Input
-              placeholder="Např. Žák řeší slovní úlohy s násobením..."
-              className="bg-card"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            {suggestedTitle && (
-              <div className="mt-2 p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-primary">Navrhovaný název:</span>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => { setTitle(suggestedTitle); setSuggestedTitle(null); }}
-                      className="p-1 rounded hover:bg-primary/10 text-primary transition-colors"
-                      title="Přijmout"
-                    >
-                      <Check className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => setSuggestedTitle(null)}
-                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground transition-colors"
-                      title="Odmítnout"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                <p className="text-sm">{suggestedTitle}</p>
-              </div>
-            )}
+            <ShimmerField shimmer={genPhase === "formulating"}>
+              <Input
+                placeholder="Např. Žák řeší slovní úlohy s násobením..."
+                className="bg-card"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </ShimmerField>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Napište cíl svými slovy a klikněte na „Vytvořit pomocí AI" — formulace i kritéria se vygenerují automaticky.
+            </p>
           </div>
 
           {/* Description */}
@@ -497,128 +434,118 @@ export default function G03CreateGoal() {
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
               Popis (volitelný)
             </label>
-            <Textarea
-              placeholder="Podrobnější popis cíle..."
-              className="min-h-[80px] bg-card"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-            {suggestedDescription && (
-              <div className="mt-2 p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-primary">Navrhovaný popis:</span>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => { setDescription(suggestedDescription); setSuggestedDescription(null); }}
-                      className="p-1 rounded hover:bg-primary/10 text-primary transition-colors"
-                      title="Přijmout"
-                    >
-                      <Check className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => setSuggestedDescription(null)}
-                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground transition-colors"
-                      title="Odmítnout"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                <p className="text-sm">{suggestedDescription}</p>
-              </div>
-            )}
+            <ShimmerField shimmer={genPhase === "formulating"} lines={2}>
+              <Textarea
+                placeholder="Podrobnější popis cíle..."
+                className="min-h-[80px] bg-card"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </ShimmerField>
           </div>
 
-          {/* Criteria */}
+          {/* Levels — shared across all criteria */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Kritéria hodnocení
-              </label>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs"
-                onClick={handleGenerateCriteria}
-                disabled={generatingCriteria || !title.trim()}
-              >
-                {generatingCriteria ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
-                )}
-                {generatingCriteria ? "Generuji..." : "Vygenerovat pomocí AI"}
-              </Button>
-            </div>
-            <div className="space-y-4">
-              {criteria.map((criterion, cIdx) => (
-                <div key={cIdx} className="p-4 rounded-xl bg-card border border-border space-y-3">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
+              Úrovně hodnocení
+            </label>
+            <p className="text-xs text-muted-foreground mb-3">
+              Úrovně popisují, kde se žák na cestě k cíli nachází.
+            </p>
+            <div className="space-y-2">
+              {levels.map((ld, idx) => (
+                <ShimmerField key={idx} shimmer={genPhase === "criteria"}>
                   <div className="flex items-start gap-2">
-                    <GripVertical className="h-5 w-5 text-muted-foreground/30 mt-2 shrink-0" />
-                    <div className="flex-1">
-                      <Input
-                        placeholder="Popis kritéria..."
-                        value={criterion.description}
-                        onChange={(e) => updateCriterionDesc(cIdx, e.target.value)}
-                      />
-                    </div>
-                    {criteria.length > 1 && (
+                    <Input
+                      className="w-32 shrink-0 text-sm"
+                      placeholder="Úroveň"
+                      value={ld.level}
+                      onChange={(e) => updateLevel(idx, "level", e.target.value)}
+                    />
+                    <Input
+                      className="flex-1 text-sm"
+                      placeholder="Co žák na této úrovni zvládá..."
+                      value={ld.description}
+                      onChange={(e) =>
+                        updateLevel(idx, "description", e.target.value)
+                      }
+                    />
+                    {levels.length > 1 && (
                       <button
-                        onClick={() => removeCriterion(cIdx)}
-                        className="p-1.5 hover:bg-destructive/10 rounded-lg shrink-0"
-                        title="Odebrat kritérium"
+                        onClick={() => removeLevel(idx)}
+                        className="p-1.5 hover:bg-destructive/10 rounded shrink-0"
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                       </button>
                     )}
                   </div>
+                </ShimmerField>
+              ))}
+              <button
+                onClick={addLevel}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <Plus className="h-3 w-3" />
+                Přidat úroveň
+              </button>
+            </div>
+          </div>
 
-                  {/* Level descriptors */}
-                  <div className="ml-7 space-y-2">
-                    <span className="text-xs text-muted-foreground">Úrovně:</span>
-                    {criterion.level_descriptors.map((ld, lIdx) => (
-                      <div key={lIdx} className="flex items-start gap-2">
-                        <Input
-                          className="w-32 shrink-0 text-sm"
-                          placeholder="Úroveň"
-                          value={ld.level}
-                          onChange={(e) => updateLevelName(cIdx, lIdx, e.target.value)}
-                        />
-                        <Input
-                          className="flex-1 text-sm"
-                          placeholder="Popis úrovně..."
-                          value={ld.description}
-                          onChange={(e) => updateLevelDesc(cIdx, lIdx, e.target.value)}
-                        />
-                        {criterion.level_descriptors.length > 1 && (
-                          <button
-                            onClick={() => removeLevel(cIdx, lIdx)}
-                            className="p-1 hover:bg-destructive/10 rounded shrink-0"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
+          {/* Criteria — simple text list */}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
+              Kritéria hodnocení
+            </label>
+            <p className="text-xs text-muted-foreground mb-3">
+              Na co se při hodnocení zaměříte — co konkrétně pozorujete.
+            </p>
+            <div className="space-y-2">
+              {criteriaTexts.map((text, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground w-5 text-right shrink-0">
+                    {idx + 1}.
+                  </span>
+                  <ShimmerField shimmer={genPhase === "criteria"} className="flex-1">
+                    <Input
+                      placeholder="Popis kritéria..."
+                      className="bg-card"
+                      value={text}
+                      onChange={(e) => updateCriterion(idx, e.target.value)}
+                    />
+                  </ShimmerField>
+                  {criteriaTexts.length > 1 && (
                     <button
-                      onClick={() => addLevel(cIdx)}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                      onClick={() => removeCriterion(idx)}
+                      className="p-1.5 hover:bg-destructive/10 rounded shrink-0"
                     >
-                      <Plus className="h-3 w-3" />
-                      Přidat úroveň
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
                     </button>
-                  </div>
+                  )}
                 </div>
               ))}
-              <Button variant="outline" onClick={addCriterion} className="gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addCriterion}
+                className="gap-1"
+              >
                 <Plus className="h-4 w-4" />
                 Přidat kritérium
               </Button>
             </div>
           </div>
 
-          <Button className="w-full" size="lg" onClick={handleSave} disabled={isPending}>
-            {isPending ? "Ukládání..." : isEdit ? "Uložit změny" : "Vytvořit cíl"}
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleSave}
+            disabled={isPending}
+          >
+            {isPending
+              ? "Ukládání..."
+              : isEdit
+                ? "Uložit změny"
+                : "Vytvořit cíl"}
           </Button>
         </div>
 
@@ -628,10 +555,16 @@ export default function G03CreateGoal() {
             <DialogHeader>
               <DialogTitle>Klonovat existující cíl</DialogTitle>
             </DialogHeader>
-            <SearchBar placeholder="Hledat cíl..." value={cloneSearch} onChange={setCloneSearch} />
+            <SearchBar
+              placeholder="Hledat cíl..."
+              value={cloneSearch}
+              onChange={setCloneSearch}
+            />
             <div className="space-y-1 mt-2">
               {filteredCloneGoals.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">Žádné cíle nenalezeny.</p>
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  Žádné cíle nenalezeny.
+                </p>
               ) : (
                 filteredCloneGoals.map((g) => {
                   const cls = classes.find((c) => c.id === g.class_id);
@@ -641,10 +574,20 @@ export default function G03CreateGoal() {
                       onClick={() => handleClone(g.id)}
                       className="w-full text-left p-3 rounded-lg hover:bg-accent transition-colors"
                     >
-                      <span className="font-medium text-sm text-foreground">{g.title}</span>
+                      <span className="font-medium text-sm text-foreground">
+                        {g.title}
+                      </span>
                       <div className="flex items-center gap-2 mt-0.5">
-                        {g.subjects?.name && <Badge variant="secondary" className="text-xs">{g.subjects.name}</Badge>}
-                        {cls && <Badge variant="outline" className="text-xs">{cls.name}</Badge>}
+                        {g.subjects?.name && (
+                          <Badge variant="secondary" className="text-xs">
+                            {g.subjects.name}
+                          </Badge>
+                        )}
+                        {cls && (
+                          <Badge variant="outline" className="text-xs">
+                            {cls.name}
+                          </Badge>
+                        )}
                       </div>
                     </button>
                   );

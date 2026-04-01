@@ -128,18 +128,41 @@ export function useDeleteClass() {
   });
 }
 
-export function useClassStudentCount(classId: string | undefined) {
+/**
+ * Fetches all class_students mappings in bulk (student_id + class_id).
+ * Used by B01StudentProfiles and F01Classes.
+ */
+export function useAllClassStudents() {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ["class_student_count", classId],
+    queryKey: ["all_class_students", user?.id],
     queryFn: async () => {
-      const { count, error } = await supabase
+      const { data, error } = await supabase
         .from("class_students")
-        .select("*", { count: "exact", head: true })
-        .eq("class_id", classId!);
+        .select("student_id, class_id");
       if (error) throw error;
-      return count || 0;
+      return data;
     },
-    enabled: !!user && !!classId,
+    enabled: !!user,
+  });
+}
+
+/**
+ * Fetches class_id counts for class_students (used by E01CaptureToolChooseClass).
+ */
+export function useClassStudentCounts() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["class_student_counts", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("class_students")
+        .select("class_id");
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      data.forEach((r) => { map[r.class_id] = (map[r.class_id] || 0) + 1; });
+      return map;
+    },
+    enabled: !!user,
   });
 }

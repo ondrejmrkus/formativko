@@ -126,23 +126,39 @@ export default function CapturePanel({
       }
     }
 
+    // Optimistically update dots immediately for instant feedback
+    const capturedStudents = [...selectedStudents];
+    onCaptured(capturedStudents, proofType.id);
+
+    // Reset form state immediately so teacher can keep working
+    const savedNote = noteText;
+    const savedPhoto = photoFile;
+    const savedLevel = progressLevel;
+    const savedStudentNotes = { ...studentNotes };
+    setNoteText("");
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setProgressLevel("");
+    setStudentNotes({});
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    // Save in background
     setSaving(true);
     try {
       const today = new Date().toISOString().split("T")[0];
 
       // Handle level field: upsert student_goal_levels
       if (hasLevel && singleGoalId) {
-        for (const sid of selectedStudents) {
+        for (const sid of capturedStudents) {
           await setStudentGoalLevel.mutateAsync({
             studentId: sid,
             goalId: singleGoalId,
-            level: progressLevel,
+            level: savedLevel,
           });
-          // Create a proof with per-student note if provided
-          const note = studentNotes[sid]?.trim();
+          const note = savedStudentNotes[sid]?.trim();
           if (note) {
             await createProof.mutateAsync({
-              title: `${proofType.name}: ${progressLevel}`,
+              title: `${proofType.name}: ${savedLevel}`,
               type: "text",
               note,
               date: today,
@@ -156,24 +172,24 @@ export default function CapturePanel({
       }
 
       // Handle image field
-      if (hasImage && photoFile) {
+      if (hasImage && savedPhoto) {
         setUploading(true);
-        const ext = photoFile.name.split(".").pop() || "jpg";
+        const ext = savedPhoto.name.split(".").pop() || "jpg";
         const path = `${crypto.randomUUID()}.${ext}`;
         const { error: uploadErr } = await supabase.storage
           .from("proof-files")
-          .upload(path, photoFile);
+          .upload(path, savedPhoto);
         if (uploadErr) throw uploadErr;
         const { data: urlData } = supabase.storage.from("proof-files").getPublicUrl(path);
 
         await createProof.mutateAsync({
           title: `${proofType.name} ${today}`,
           type: "camera",
-          note: noteText || "",
+          note: savedNote || "",
           date: today,
           lessonId: selectedLesson,
-          studentIds: selectedStudents,
-          fileName: photoFile.name,
+          studentIds: capturedStudents,
+          fileName: savedPhoto.name,
           fileUrl: urlData.publicUrl,
           goalIds: selectedGoalIds.length > 0 ? selectedGoalIds : undefined,
           proofTypeId: dbProofTypeId,
@@ -184,10 +200,10 @@ export default function CapturePanel({
         await createProof.mutateAsync({
           title: `${proofType.name} ${today}`,
           type: "text",
-          note: noteText,
+          note: savedNote,
           date: today,
           lessonId: selectedLesson,
-          studentIds: selectedStudents,
+          studentIds: capturedStudents,
           goalIds: selectedGoalIds.length > 0 ? selectedGoalIds : undefined,
           proofTypeId: dbProofTypeId,
         });
@@ -200,26 +216,17 @@ export default function CapturePanel({
           note: "",
           date: today,
           lessonId: selectedLesson,
-          studentIds: selectedStudents,
+          studentIds: capturedStudents,
           proofTypeId: dbProofTypeId,
         });
       }
 
-      onCaptured(selectedStudents, proofType.id);
-
       toast({
-        title: `${proofType.name} uloženo pro ${selectedStudents.length} žáků`,
+        title: `${proofType.name} uloženo pro ${capturedStudents.length} žáků`,
       });
-
-      // Reset form state
-      setNoteText("");
-      setPhotoFile(null);
-      setPhotoPreview(null);
-      setProgressLevel("");
-      setStudentNotes({});
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch {
-      toast({ title: "Chyba při ukládání", variant: "destructive" });
+    } catch (err) {
+      console.error("Chyba při ukládání", err);
+      toast({ title: "Chyba při ukládání — důkaz nebyl uložen", variant: "destructive" });
     } finally {
       setSaving(false);
       setUploading(false);
@@ -248,7 +255,7 @@ export default function CapturePanel({
                     onClick={() =>
                       setSelectedGoalIds(singleGoalId === goal.id ? [] : [goal.id])
                     }
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       singleGoalId === goal.id
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "bg-muted text-muted-foreground hover:bg-accent"

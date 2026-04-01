@@ -19,6 +19,7 @@ import { useCreateProof } from "@/hooks/useProofs";
 import { useStudentClasses } from "@/hooks/useClasses";
 import { useGoalsForClass, type EducationalGoal } from "@/hooks/useGoals";
 import { useToast } from "@/hooks/use-toast";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type ProofType = "text" | "voice" | "camera" | "file" | "grade";
 
@@ -31,6 +32,7 @@ const proofTypes: { type: ProofType; label: string; icon: React.ElementType }[] 
 ];
 
 export default function B04AddProofOfLearning() {
+  usePageTitle("Přidat důkaz");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -71,7 +73,8 @@ export default function B04AddProofOfLearning() {
         }
         toast({ title: "Známky uloženy" });
         navigate(`/student-profiles/${id}`);
-      } catch {
+      } catch (err) {
+        console.error("Chyba při ukládání", err);
         toast({ title: "Chyba při ukládání", variant: "destructive" });
       }
       return;
@@ -93,7 +96,8 @@ export default function B04AddProofOfLearning() {
       });
       toast({ title: "Důkaz o učení uložen" });
       navigate(`/student-profiles/${id}`);
-    } catch {
+    } catch (err) {
+      console.error("Chyba při ukládání", err);
       toast({ title: "Chyba při ukládání", variant: "destructive" });
     }
   };

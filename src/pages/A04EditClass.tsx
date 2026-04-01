@@ -9,15 +9,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useStudents, getStudentDisplayName } from "@/hooks/useStudents";
 import { useClasses, useClassStudents, useUpdateClass, useDeleteClass } from "@/hooks/useClasses";
 import { useStudentGroups, useCreateStudentGroup, useUpdateStudentGroup, useDeleteStudentGroup } from "@/hooks/useStudentGroups";
-import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
+import { StudentPicker } from "@/components/shared/StudentPicker";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function A04EditClass() {
+  usePageTitle("Upravit třídu");
   const { classId } = useParams<{ classId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -28,8 +28,6 @@ export default function A04EditClass() {
   const deleteClass = useDeleteClass();
   const [className, setClassName] = useState("");
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const [initialized, setInitialized] = useState(false);
 
   // Quick Groups
@@ -41,6 +39,7 @@ export default function A04EditClass() {
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editGroupName, setEditGroupName] = useState("");
   const [editGroupMembers, setEditGroupMembers] = useState<string[]>([]);
+  const [deleteGroupTarget, setDeleteGroupTarget] = useState<{ id: string; name: string } | null>(null);
 
   const currentClass = classes.find((c) => c.id === classId);
 
@@ -52,14 +51,8 @@ export default function A04EditClass() {
     }
   }, [currentClass, classStudents, initialized]);
 
-  const availableStudents = allStudents
-    .filter((s) => !selectedStudentIds.includes(s.id))
-    .filter((s) => !search || `${s.first_name} ${s.last_name}`.toLowerCase().includes(search.toLowerCase()));
-
   const addStudent = (id: string) => {
     setSelectedStudentIds((prev) => [...prev, id]);
-    setSearchOpen(false);
-    setSearch("");
   };
 
   const removeStudent = (id: string) => {
@@ -76,7 +69,8 @@ export default function A04EditClass() {
       await updateClass.mutateAsync({ classId, name: className.trim(), studentIds: selectedStudentIds });
       toast({ title: `Třída "${className}" uložena` });
       navigate("/classes");
-    } catch {
+    } catch (err) {
+      console.error("Chyba při ukládání třídy", err);
       toast({ title: "Chyba při ukládání třídy", variant: "destructive" });
     }
   };
@@ -87,7 +81,8 @@ export default function A04EditClass() {
       await deleteClass.mutateAsync(classId);
       toast({ title: "Třída smazána" });
       navigate("/classes");
-    } catch {
+    } catch (err) {
+      console.error("Chyba při mazání třídy", err);
       toast({ title: "Chyba při mazání třídy", variant: "destructive" });
     }
   };
@@ -135,38 +130,14 @@ export default function A04EditClass() {
 
         <div className="mb-4">
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Žáci ve třídě</label>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {selectedStudentIds.map((sid) => {
-              const s = allStudents.find((st) => st.id === sid);
-              if (!s) return null;
-              return (
-                <span key={sid} className="flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
-                  {getStudentDisplayName(s)}
-                  <button onClick={() => removeStudent(sid)} className="ml-1 hover:text-destructive"><X className="h-3 w-3" /></button>
-                </span>
-              );
-            })}
-            <Popover open={searchOpen} onOpenChange={(o) => { setSearchOpen(o); if (!o) setSearch(""); }}>
-              <PopoverTrigger asChild>
-                <button className="flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-border text-sm text-muted-foreground hover:bg-accent transition-colors">
-                  <Plus className="h-3 w-3" /> Přidat žáka
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-2" align="start">
-                <Input placeholder="Hledat žáka..." value={search} onChange={(e) => setSearch(e.target.value)} className="mb-2 h-8 text-sm" autoFocus />
-                <div className="max-h-48 overflow-auto space-y-0.5">
-                  {availableStudents.length === 0 ? (
-                    <p className="text-sm text-muted-foreground px-2 py-1">Žádní žáci</p>
-                  ) : (
-                    availableStudents.slice(0, 20).map((s) => (
-                      <button key={s.id} onClick={() => addStudent(s.id)} className="w-full text-left px-2 py-1.5 rounded text-sm hover:bg-accent text-foreground transition-colors">
-                        {getStudentDisplayName(s)}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
+          <div className="mb-3">
+            <StudentPicker
+              allStudents={allStudents}
+              selectedStudentIds={selectedStudentIds}
+              onAdd={addStudent}
+              onRemove={removeStudent}
+              addLabel="Přidat žáka"
+            />
           </div>
         </div>
 
@@ -276,11 +247,7 @@ export default function A04EditClass() {
                           <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(`Smazat skupinu „${group.name}"?`)) {
-                              deleteGroup.mutate({ groupId: group.id, classId: classId! });
-                            }
-                          }}
+                          onClick={() => setDeleteGroupTarget({ id: group.id, name: group.name })}
                           className="p-1.5 hover:bg-destructive/10 rounded"
                           title="Smazat skupinu"
                         >
@@ -344,6 +311,32 @@ export default function A04EditClass() {
             </Button>
           </div>
         </div>
+
+        {/* Delete group confirmation */}
+        <AlertDialog open={!!deleteGroupTarget} onOpenChange={(open) => { if (!open) setDeleteGroupTarget(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Smazat skupinu?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tím smažete skupinu „{deleteGroupTarget?.name}".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Zrušit</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (deleteGroupTarget && classId) {
+                    deleteGroup.mutate({ groupId: deleteGroupTarget.id, classId });
+                  }
+                  setDeleteGroupTarget(null);
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Smazat
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Button className="w-full" size="lg" onClick={handleSave} disabled={updateClass.isPending}>
           {updateClass.isPending ? "Ukládání…" : "Uložit změny"}

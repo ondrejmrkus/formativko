@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
-import { ChevronRight, Sparkles } from "lucide-react";
+import { ChevronRight, Sparkles, Target } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import rvp1Raw from "@/../docs/Rámcový vzdělávací program pro základní vzdělávání 2025 1. stupeň.md?raw";
 import rvp2Raw from "@/../docs/Rámcový vzdělávací program pro základní vzdělávání 2025 2. stupeň.md?raw";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type Stage = "1" | "2";
 
@@ -158,14 +160,28 @@ function formatInline(text: string): React.ReactNode[] {
   return parts;
 }
 
-function BulletItem({ text }: { text: string }) {
+function BulletItem({ text, onUseAsGoal }: { text: string; onUseAsGoal?: (outcome: string) => void }) {
+  // Extract plain text for the goal (strip markdown bold markers)
+  const plainText = text.replace(/\*\*(.+?)\*\*/g, "$1");
+
   // Pattern: **Label**: Description
   const labelMatch = text.match(/^\*\*(.+?)\*\*:\s*(.+)$/);
   if (labelMatch) {
     return (
-      <div className="py-2.5 text-sm leading-relaxed">
-        <span className="font-semibold text-foreground">{labelMatch[1]}</span>
-        <span className="text-foreground/70"> — {labelMatch[2]}</span>
+      <div className="py-2.5 text-sm leading-relaxed flex items-start gap-2 group">
+        <div className="flex-1 min-w-0">
+          <span className="font-semibold text-foreground">{labelMatch[1]}</span>
+          <span className="text-foreground/70"> — {labelMatch[2]}</span>
+        </div>
+        {onUseAsGoal && (
+          <button
+            onClick={() => onUseAsGoal(plainText)}
+            className="shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-primary/10 text-primary transition-all"
+            title="Použít jako vzdělávací cíl"
+          >
+            <Target className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
     );
   }
@@ -174,19 +190,41 @@ function BulletItem({ text }: { text: string }) {
   const boldOnlyMatch = text.match(/^\*\*(.+?)\*\*(.*)$/);
   if (boldOnlyMatch) {
     return (
-      <div className="py-2.5 text-sm leading-relaxed">
-        <span className="font-semibold text-foreground">{boldOnlyMatch[1]}</span>
-        {boldOnlyMatch[2] && <span className="text-foreground/70">{boldOnlyMatch[2]}</span>}
+      <div className="py-2.5 text-sm leading-relaxed flex items-start gap-2 group">
+        <div className="flex-1 min-w-0">
+          <span className="font-semibold text-foreground">{boldOnlyMatch[1]}</span>
+          {boldOnlyMatch[2] && <span className="text-foreground/70">{boldOnlyMatch[2]}</span>}
+        </div>
+        {onUseAsGoal && (
+          <button
+            onClick={() => onUseAsGoal(plainText)}
+            className="shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-primary/10 text-primary transition-all"
+            title="Použít jako vzdělávací cíl"
+          >
+            <Target className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="py-2.5 text-sm leading-relaxed text-foreground/80">{formatInline(text)}</div>
+    <div className="py-2.5 text-sm leading-relaxed flex items-start gap-2 group">
+      <span className="flex-1 min-w-0 text-foreground/80">{formatInline(text)}</span>
+      {onUseAsGoal && (
+        <button
+          onClick={() => onUseAsGoal(plainText)}
+          className="shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-primary/10 text-primary transition-all"
+          title="Použít jako vzdělávací cíl"
+        >
+          <Target className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
   );
 }
 
-function ContentBlock({ lines }: { lines: string[] }) {
+function ContentBlock({ lines, onUseAsGoal }: { lines: string[]; onUseAsGoal?: (outcome: string) => void }) {
   const bullets: string[] = [];
   const paragraphs: string[] = [];
 
@@ -213,7 +251,7 @@ function ContentBlock({ lines }: { lines: string[] }) {
       {bullets.length > 0 && (
         <div className="divide-y divide-border/40">
           {bullets.map((b, i) => (
-            <BulletItem key={i} text={b} />
+            <BulletItem key={i} text={b} onUseAsGoal={onUseAsGoal} />
           ))}
         </div>
       )}
@@ -221,7 +259,7 @@ function ContentBlock({ lines }: { lines: string[] }) {
   );
 }
 
-function SectionH2({ section }: { section: Section }) {
+function SectionH2({ section, onUseAsGoal }: { section: Section; onUseAsGoal?: (outcome: string) => void }) {
   const [open, setOpen] = useState(false);
   const hasContent = section.children.length > 0 || section.content.length > 0;
 
@@ -239,14 +277,14 @@ function SectionH2({ section }: { section: Section }) {
       {open && (
         <div className="px-4 pb-4 pl-10">
           {section.content.length > 0 && (
-            <ContentBlock lines={section.content} />
+            <ContentBlock lines={section.content} onUseAsGoal={onUseAsGoal} />
           )}
           {section.children.length > 0 && (
             <div className="mt-2 space-y-3">
               {section.children.map((child, i) => (
                 <div key={i}>
                   <h4 className="text-sm font-semibold text-foreground/70 mb-1">{child.title}</h4>
-                  {child.content.length > 0 && <ContentBlock lines={child.content} />}
+                  {child.content.length > 0 && <ContentBlock lines={child.content} onUseAsGoal={onUseAsGoal} />}
                 </div>
               ))}
             </div>
@@ -257,9 +295,12 @@ function SectionH2({ section }: { section: Section }) {
   );
 }
 
-function SectionH1({ section }: { section: Section }) {
+function SectionH1({ section, onUseAsGoal }: { section: Section; onUseAsGoal?: (outcome: string, subjectHint?: string) => void }) {
   const [open, setOpen] = useState(false);
   const hasContent = section.children.length > 0 || section.content.length > 0;
+
+  // For "Vzdělávací obory", pass subject hint from the H2 title
+  const isSubjectArea = section.title === "Vzdělávací obory";
 
   return (
     <div className="border rounded-xl bg-card shadow-sm overflow-hidden">
@@ -276,13 +317,21 @@ function SectionH1({ section }: { section: Section }) {
         <div className="px-5 pb-5">
           {section.content.length > 0 && (
             <div className="mb-3 pb-3 border-b border-border/40">
-              <ContentBlock lines={section.content} />
+              <ContentBlock lines={section.content} onUseAsGoal={onUseAsGoal ? (o) => onUseAsGoal(o) : undefined} />
             </div>
           )}
           {section.children.length > 0 && (
             <div className="space-y-2">
               {section.children.map((child, i) => (
-                <SectionH2 key={i} section={child} />
+                <SectionH2
+                  key={i}
+                  section={child}
+                  onUseAsGoal={
+                    onUseAsGoal
+                      ? (o) => onUseAsGoal(o, isSubjectArea ? child.title : undefined)
+                      : undefined
+                  }
+                />
               ))}
             </div>
           )}
@@ -293,25 +342,40 @@ function SectionH1({ section }: { section: Section }) {
 }
 
 export default function R01Rvp() {
+  usePageTitle("RVP");
   const [stage, setStage] = useState<Stage>("1");
+  const navigate = useNavigate();
 
   const sections = useMemo(
     () => normalizeSections(parseMarkdown(stage === "1" ? rvp1Raw : rvp2Raw)),
     [stage],
   );
 
+  const handleUseAsGoal = (outcome: string, subjectHint?: string) => {
+    const params = new URLSearchParams();
+    params.set("rvpOutcome", outcome);
+    if (subjectHint) params.set("rvpSubject", subjectHint);
+    navigate(`/goals/create?${params.toString()}`);
+  };
+
   return (
     <AppLayout>
-      <div className="max-w-3xl mx-auto px-4 pb-8">
+      <div className="max-w-3xl mx-auto">
         <AppBreadcrumb items={[{ label: "RVP 2025" }]} />
 
-        <h1 className="text-2xl font-bold mt-2 mb-4">Rámcový vzdělávací program pro základní vzdělávání 2025</h1>
+        <h1 className="text-2xl font-bold mb-6">Rámcový vzdělávací program pro základní vzdělávání 2025</h1>
 
         <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20 mb-6">
           <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-          <p className="text-sm text-foreground">
-            Formativko pracuje s novým RVP 2025. Obsah rámcového vzdělávacího programu se automaticky promítá do všech vzdělávacích cílů a hodnocení.
-          </p>
+          <div className="text-sm text-foreground space-y-1">
+            <p>
+              Formativko pracuje s novým RVP 2025. Obsah rámcového vzdělávacího programu se automaticky promítá do všech vzdělávacích cílů a hodnocení.
+            </p>
+            <p className="text-muted-foreground flex items-center gap-1.5">
+              <Target className="h-3.5 w-3.5" />
+              Najeďte na výstup učení a klikněte na cíl pro rychlé vytvoření vzdělávacího cíle.
+            </p>
+          </div>
         </div>
 
         <div className="flex gap-2 mb-6">
@@ -339,7 +403,7 @@ export default function R01Rvp() {
 
         <div className="space-y-3">
           {sections.map((section, i) => (
-            <SectionH1 key={`${stage}-${i}`} section={section} />
+            <SectionH1 key={`${stage}-${i}`} section={section} onUseAsGoal={handleUseAsGoal} />
           ))}
         </div>
       </div>

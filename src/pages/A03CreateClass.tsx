@@ -6,45 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, X, Upload, Loader2, Lightbulb } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useStudents, useCreateStudents, getStudentDisplayName } from "@/hooks/useStudents";
+import { useStudents, useCreateStudents } from "@/hooks/useStudents";
 import { useCreateClass } from "@/hooks/useClasses";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { supabase } from "@/integrations/supabase/client";
-
-function parseNamesFromText(text: string): { first: string; last: string }[] {
-  const results: { first: string; last: string }[] = [];
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  for (const line of lines) {
-    const parts = line.split(/[,;\t]+/).map((p) => p.trim()).filter(Boolean);
-    if (parts.length >= 2) {
-      results.push({ first: parts[0], last: parts[1] });
-    } else {
-      const words = line.split(/\s+/).filter(Boolean);
-      if (words.length >= 2) {
-        const first = words.slice(0, -1).join(" ");
-        const last = words[words.length - 1];
-        results.push({ first, last });
-      } else if (words.length === 1) {
-        results.push({ first: words[0], last: "" });
-      }
-    }
-  }
-  return results;
-}
-
-const TEXT_EXTENSIONS = [".csv", ".txt", ".tsv", ".text"];
-
-function isTextFile(file: File): boolean {
-  if (file.type.startsWith("text/")) return true;
-  const name = file.name.toLowerCase();
-  return TEXT_EXTENSIONS.some((ext) => name.endsWith(ext));
-}
+import { StudentPicker } from "@/components/shared/StudentPicker";
+import { parseNamesFromText, isTextFile, processFileWithAI } from "@/utils/nameParser";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function A03CreateClass() {
+  usePageTitle("Vytvořit třídu");
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: allStudents = [] } = useStudents();
@@ -54,8 +23,6 @@ export default function A03CreateClass() {
 
   const [className, setClassName] = useState("");
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [search, setSearch] = useState("");
 
   // New student rows
   const [newRows, setNewRows] = useState([
@@ -66,14 +33,8 @@ export default function A03CreateClass() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const availableStudents = allStudents
-    .filter((s) => !selectedStudentIds.includes(s.id))
-    .filter((s) => !search || `${s.first_name} ${s.last_name}`.toLowerCase().includes(search.toLowerCase()));
-
   const addStudent = (id: string) => {
     setSelectedStudentIds((prev) => [...prev, id]);
-    setSearchOpen(false);
-    setSearch("");
   };
 
   const removeStudent = (id: string) => {
@@ -92,7 +53,6 @@ export default function A03CreateClass() {
     setNewRows((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // File upload handlers (borrowed from A02)
   const addParsedNames = (parsed: { first: string; last: string }[]) => {
     if (parsed.length === 0) {
       toast({ title: "V souboru nebyla nalezena žádná jména", variant: "destructive" });
@@ -103,31 +63,6 @@ export default function A03CreateClass() {
       return [...nonEmpty, ...parsed];
     });
     toast({ title: `Načteno ${parsed.length} ${parsed.length === 1 ? "jméno" : "jmen"} ze souboru` });
-  };
-
-  const processFileWithAI = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error("Not authenticated");
-
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-names`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        body: formData,
-      }
-    );
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Chyba při zpracování souboru");
-    }
-
-    const { names } = await res.json();
-    return (names || []) as { first: string; last: string }[];
   };
 
   const processFile = async (file: File) => {
@@ -194,7 +129,8 @@ export default function A03CreateClass() {
         description: `${totalStudents} ${totalStudents === 1 ? "žák přidán" : totalStudents < 5 ? "žáci přidáni" : "žáků přidáno"}`,
       });
       navigate("/");
-    } catch {
+    } catch (err) {
+      console.error("Chyba při vytváření třídy", err);
       toast({ title: "Chyba při vytváření třídy", variant: "destructive" });
     }
   };
@@ -227,52 +163,13 @@ export default function A03CreateClass() {
         {allStudents.length > 0 && (
           <div className="mb-6">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">Existující žáci</label>
-            <div className="flex flex-wrap gap-2">
-              {selectedStudentIds.map((sid) => {
-                const s = allStudents.find((st) => st.id === sid);
-                if (!s) return null;
-                return (
-                  <span key={sid} className="flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
-                    {getStudentDisplayName(s)}
-                    <button onClick={() => removeStudent(sid)} className="ml-1 hover:text-destructive">
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                );
-              })}
-              <Popover open={searchOpen} onOpenChange={(o) => { setSearchOpen(o); if (!o) setSearch(""); }}>
-                <PopoverTrigger asChild>
-                  <button className="flex items-center gap-1 px-3 py-1 rounded-full border border-dashed border-border text-sm text-muted-foreground hover:bg-accent transition-colors">
-                    <Plus className="h-3 w-3" />
-                    Vybrat žáka
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-2" align="start">
-                  <Input
-                    placeholder="Hledat žáka..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="mb-2 h-8 text-sm"
-                    autoFocus
-                  />
-                  <div className="max-h-48 overflow-auto space-y-0.5">
-                    {availableStudents.length === 0 ? (
-                      <p className="text-sm text-muted-foreground px-2 py-1">Žádní žáci</p>
-                    ) : (
-                      availableStudents.slice(0, 20).map((s) => (
-                        <button
-                          key={s.id}
-                          onClick={() => addStudent(s.id)}
-                          className="w-full text-left px-2 py-1.5 rounded text-sm hover:bg-accent text-foreground transition-colors"
-                        >
-                          {getStudentDisplayName(s)}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+            <StudentPicker
+              allStudents={allStudents}
+              selectedStudentIds={selectedStudentIds}
+              onAdd={addStudent}
+              onRemove={removeStudent}
+              addLabel="Vybrat žáka"
+            />
           </div>
         )}
 

@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type TableName =
   | "students"
@@ -70,6 +71,7 @@ function parseCSV(text: string): Record<string, string>[] {
 }
 
 export default function Z01Import() {
+  usePageTitle("Import");
   const { user } = useAuth();
   const [files, setFiles] = useState<Record<TableName, File | null>>({
     students: null, classes: null, class_students: null,

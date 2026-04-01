@@ -9,8 +9,10 @@ import { Pencil, Download, Maximize2 } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { useStudent, useStudents, getStudentDisplayName } from "@/hooks/useStudents";
 import { useProof } from "@/hooks/useProofs";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function B03bProofOfLearningDetailFile() {
+  usePageTitle("Detail důkazu");
   const { id, proofId } = useParams<{ id: string; proofId: string }>();
   const { data: student, isLoading: studentLoading } = useStudent(id);
   const { data: proof, isLoading: proofLoading } = useProof(proofId);

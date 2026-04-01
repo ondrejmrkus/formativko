@@ -24,47 +24,24 @@ import {
   useHasProofs,
 } from "@/hooks/useDashboard";
 import eliImage from "@/assets/Eli.svg";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 /**
  * Convert a Czech first name to vocative case (5. pád).
- * Covers the most common patterns for Czech first names.
  */
 function toVocative(name: string): string {
   if (!name || name.length < 2) return name;
-
-  // Names ending in -ia, -ie, -ie → unchanged (Marie, Lucie, Sofie)
   if (/i[eaě]$/i.test(name)) return name;
-
-  // Names ending in -a → -o (Ondra→Ondro, Honza→Honzo, Eva→Evo, Jana→Jano)
   if (name.endsWith("a")) return name.slice(0, -1) + "o";
-
-  // Names ending in -e, -ě, -i, -í, -o → unchanged
   if (/[eěiíoó]$/i.test(name)) return name;
-
-  // Names ending in -ek → -ku (Marek→Marku, Radek→Radku, Zdeněk→Zdeňku)
   if (name.endsWith("ek")) return name.slice(0, -2) + "ku";
   if (name.endsWith("ěk")) return name.slice(0, -2) + "ňku";
-
-  // Names ending in -el → -le (Pavel→Pavle)
   if (name.endsWith("el")) return name.slice(0, -2) + "le";
-
-  // Names ending in soft/hushing consonants → add -i
-  // (Tomáš→Tomáši, Lukáš→Lukáši, Miloš→Miloši, Matouš→Matouši)
   if (/[šžčřďťň]$/.test(name)) return name + "i";
-
-  // Names ending in -ec → -če (but rare for first names)
   if (name.endsWith("ec")) return name.slice(0, -2) + "če";
-
-  // Names ending in -r after consonant → -ře (Petr→Petře, Alexandr→Alexandre... well Petře)
   if (/[^aeiouáéíóúůýě]r$/i.test(name)) return name.slice(0, -1) + "ře";
-
-  // Names ending in -k (not -ek, handled above) → -ku (Erik→Eriku)
   if (name.endsWith("k")) return name.slice(0, -1) + "ku";
-
-  // Default for other consonants → add -e
-  // (Jan→Jane, Adam→Adame, Filip→Filipe, Jakub→Jakube, David→Davide)
   if (/[bcdfghjlmnprstvzBCDFGHJLMNPRSTVZ]$/.test(name)) return name + "e";
-
   return name;
 }
 
@@ -85,7 +62,34 @@ function getOnboardingStep(
   return null;
 }
 
+function getMasteryColor(mastery: "high" | "mid" | "low" | "none") {
+  switch (mastery) {
+    case "high":
+      return "bg-green-100 text-green-800 border-green-200";
+    case "mid":
+      return "bg-yellow-100 text-yellow-800 border-yellow-200";
+    case "low":
+      return "bg-red-100 text-red-800 border-red-200";
+    case "none":
+      return "bg-muted text-muted-foreground border-border";
+  }
+}
+
+function getMasteryLabel(mastery: "high" | "mid" | "low" | "none") {
+  switch (mastery) {
+    case "high":
+      return "Ovládá";
+    case "mid":
+      return "Rozvíjí se";
+    case "low":
+      return "Začíná";
+    case "none":
+      return "Nenastaveno";
+  }
+}
+
 export default function A01Dashboard() {
+  usePageTitle("Přehled");
   const { displayName } = useProfile();
   const { data: allStudents = [] } = useStudents();
   const { data: classes = [] } = useClasses();
@@ -94,7 +98,6 @@ export default function A01Dashboard() {
   const { data: lessons = [] } = useLessons();
   const { data: hasProofs = false } = useHasProofs();
 
-  // Dashboard data
   const { data: todaysLessons = [] } = useTodaysLessons();
   const { data: nextLesson } = useNextLesson(todaysLessons.length > 0);
   const { data: lessonGoalCounts = {} } = useLessonGoalCounts(
@@ -102,7 +105,6 @@ export default function A01Dashboard() {
   );
   const { data: courseHeatmaps = [] } = useCourseStudentHeatmap();
 
-  // Onboarding state
   const step = getOnboardingStep(
     classes.length > 0,
     courses.length > 0,
@@ -111,7 +113,6 @@ export default function A01Dashboard() {
     hasProofs
   );
 
-  // Build link with course context for goal/lesson creation
   const firstCourse = courses[0];
   const goalCreateUrl = firstCourse
     ? `/goals/create?courseId=${firstCourse.id}`
@@ -121,7 +122,8 @@ export default function A01Dashboard() {
     : "/lessons/create";
 
   const hour = new Date().getHours();
-  const greeting = hour < 9 ? "Dobré ráno" : hour < 18 ? "Dobrý den" : "Dobrý večer";
+  const greeting =
+    hour < 9 ? "Dobré ráno" : hour < 18 ? "Dobrý den" : "Dobrý večer";
 
   return (
     <AppLayout>
@@ -129,41 +131,58 @@ export default function A01Dashboard() {
         {/* Greeting */}
         <div>
           <h1 className="text-2xl font-bold">
-            {greeting}{displayName ? `, ${toVocative(displayName)}` : ""}!
+            {greeting}
+            {displayName ? `, ${toVocative(displayName)}` : ""}!
           </h1>
         </div>
 
         {/* === ONBOARDING === */}
         {step !== null && (
           <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
-            {/* Completed steps */}
             {step > 1 && (
               <div className="space-y-1">
-                {/* Step 1 completed */}
                 <Link
-                  to={classes.length === 1 ? `/edit-class/${classes[0].id}` : "/classes"}
+                  to={
+                    classes.length === 1
+                      ? `/edit-class/${classes[0].id}`
+                      : "/classes"
+                  }
                   className="flex items-center gap-3 px-3 py-2.5 -mx-3 rounded-lg hover:bg-muted/50 transition-colors group"
                 >
                   <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                   <span className="text-sm font-semibold text-foreground">
-                    {classes.length} {classes.length === 1 ? "třída" : classes.length < 5 ? "třídy" : "tříd"}
+                    {classes.length}{" "}
+                    {classes.length === 1
+                      ? "třída"
+                      : classes.length < 5
+                        ? "třídy"
+                        : "tříd"}
                   </span>
                   <span className="text-sm text-foreground/60">
                     — {classes.map((c) => c.name).join(", ")}
-                    {allStudents.length > 0 && ` · ${allStudents.length} ${allStudents.length === 1 ? "žák" : allStudents.length < 5 ? "žáci" : "žáků"}`}
+                    {allStudents.length > 0 &&
+                      ` · ${allStudents.length} ${allStudents.length === 1 ? "žák" : allStudents.length < 5 ? "žáci" : "žáků"}`}
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground/50 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Link>
 
-                {/* Step 2 completed */}
                 {step > 2 && (
                   <Link
-                    to={courses.length === 1 ? `/courses/${courses[0].id}` : "/courses"}
+                    to={
+                      courses.length === 1
+                        ? `/courses/${courses[0].id}`
+                        : "/courses"
+                    }
                     className="flex items-center gap-3 px-3 py-2.5 -mx-3 rounded-lg hover:bg-muted/50 transition-colors group"
                   >
                     <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                     <span className="text-sm font-semibold text-foreground">
-                      {courses.length} {courses.length === 1 ? "kurz vytvořen" : courses.length < 5 ? "kurzy vytvořeny" : "kurzů vytvořeno"}
+                      {courses.length}{" "}
+                      {courses.length === 1
+                        ? "kurz vytvořen"
+                        : courses.length < 5
+                          ? "kurzy vytvořeny"
+                          : "kurzů vytvořeno"}
                     </span>
                     <span className="text-sm text-foreground/60">
                       — {courses.map((c) => c.name).join(", ")}
@@ -172,15 +191,21 @@ export default function A01Dashboard() {
                   </Link>
                 )}
 
-                {/* Step 3 completed */}
                 {step > 3 && (
                   <Link
-                    to={goals.length === 1 ? `/goals/${goals[0].id}` : "/goals"}
+                    to={
+                      goals.length === 1 ? `/goals/${goals[0].id}` : "/goals"
+                    }
                     className="flex items-center gap-3 px-3 py-2.5 -mx-3 rounded-lg hover:bg-muted/50 transition-colors group"
                   >
                     <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                     <span className="text-sm font-semibold text-foreground">
-                      {goals.length} {goals.length === 1 ? "cíl stanoven" : goals.length < 5 ? "cíle stanoveny" : "cílů stanoveno"}
+                      {goals.length}{" "}
+                      {goals.length === 1
+                        ? "cíl stanoven"
+                        : goals.length < 5
+                          ? "cíle stanoveny"
+                          : "cílů stanoveno"}
                     </span>
                     <span className="text-sm text-foreground/60">
                       — {goals.map((g) => g.title).join(", ")}
@@ -189,15 +214,23 @@ export default function A01Dashboard() {
                   </Link>
                 )}
 
-                {/* Step 4 completed */}
                 {step > 4 && (
                   <Link
-                    to={lessons.length === 1 ? `/lessons/${lessons[0].id}` : "/lessons"}
+                    to={
+                      lessons.length === 1
+                        ? `/lessons/${lessons[0].id}`
+                        : "/lessons"
+                    }
                     className="flex items-center gap-3 px-3 py-2.5 -mx-3 rounded-lg hover:bg-muted/50 transition-colors group"
                   >
                     <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                     <span className="text-sm font-semibold text-foreground">
-                      {lessons.length} {lessons.length === 1 ? "lekce naplánována" : lessons.length < 5 ? "lekce naplánovány" : "lekcí naplánováno"}
+                      {lessons.length}{" "}
+                      {lessons.length === 1
+                        ? "lekce naplánována"
+                        : lessons.length < 5
+                          ? "lekce naplánovány"
+                          : "lekcí naplánováno"}
                     </span>
                     <span className="text-sm text-foreground/60">
                       — {lessons.map((l) => l.title).join(", ")}
@@ -210,13 +243,17 @@ export default function A01Dashboard() {
               </div>
             )}
 
-            {/* Current step */}
             {step === 1 && (
               <div className="flex items-start gap-5">
-                <img src={eliImage} alt="" className="h-16 w-16 shrink-0 hidden sm:block" />
+                <img
+                  src={eliImage}
+                  alt=""
+                  className="h-16 w-16 shrink-0 hidden sm:block"
+                />
                 <div className="flex-1">
                   <p className="text-muted-foreground mb-4">
-                    Pojďme společně připravit vše potřebné. Začneme vytvořením třídy a přidáním žáků.
+                    Pojďme společně připravit vše potřebné. Začneme vytvořením
+                    třídy a přidáním žáků.
                   </p>
                   <Link
                     to="/create-class"
@@ -253,7 +290,8 @@ export default function A01Dashboard() {
                   Stanovte první vzdělávací cíl pro váš kurz.
                 </p>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Cíl popisuje, co se žáci mají naučit — například „Žák rozliší sudá a lichá čísla."
+                  Cíl popisuje, co se žáci mají naučit — například „Žák rozliší
+                  sudá a lichá čísla."
                 </p>
                 <Link
                   to={goalCreateUrl}
@@ -289,7 +327,8 @@ export default function A01Dashboard() {
                   Vše je připraveno!
                 </p>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Zachyťte svůj první důkaz učení — pozorování, fotografii nebo poznámku z hodiny.
+                  Zachyťte svůj první důkaz učení — pozorování, fotografii nebo
+                  poznámku z hodiny.
                 </p>
                 <Link
                   to="/capture"
@@ -303,7 +342,7 @@ export default function A01Dashboard() {
           </div>
         )}
 
-        {/* === NORMAL DASHBOARD CONTENT (only when onboarding complete) === */}
+        {/* === NORMAL DASHBOARD CONTENT === */}
         {step === null && (
           <>
             {/* === TODAY'S LESSONS === */}
@@ -330,8 +369,12 @@ export default function A01Dashboard() {
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {cls?.name}
-                            {lesson.subjects?.name ? ` · ${lesson.subjects.name}` : ""}
-                            {goalCount > 0 ? ` · ${goalCount} ${goalCount === 1 ? "cíl" : goalCount < 5 ? "cíle" : "cílů"}` : ""}
+                            {lesson.subjects?.name
+                              ? ` · ${lesson.subjects.name}`
+                              : ""}
+                            {goalCount > 0
+                              ? ` · ${goalCount} ${goalCount === 1 ? "cíl" : goalCount < 5 ? "cíle" : "cílů"}`
+                              : ""}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-3">
@@ -377,13 +420,18 @@ export default function A01Dashboard() {
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {nextLesson.date
-                        ? new Date(nextLesson.date).toLocaleDateString("cs-CZ", {
-                            weekday: "long",
-                            day: "numeric",
-                            month: "long",
-                          })
+                        ? new Date(nextLesson.date).toLocaleDateString(
+                            "cs-CZ",
+                            {
+                              weekday: "long",
+                              day: "numeric",
+                              month: "long",
+                            }
+                          )
                         : ""}
-                      {nextLesson.subjects?.name ? ` · ${nextLesson.subjects.name}` : ""}
+                      {nextLesson.subjects?.name
+                        ? ` · ${nextLesson.subjects.name}`
+                        : ""}
                     </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -391,8 +439,9 @@ export default function A01Dashboard() {
               </div>
             ) : null}
 
-            {/* === COURSE CARDS === */}
-            {courseHeatmaps.filter((ch) => ch.students.length > 0).length > 0 && (
+            {/* === COURSE CARDS WITH MASTERY HEATMAP === */}
+            {courseHeatmaps.filter((ch) => ch.students.length > 0).length >
+              0 && (
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
@@ -401,16 +450,20 @@ export default function A01Dashboard() {
                   </h2>
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1">
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm bg-muted border border-border" />
+                      Nenastaveno
+                    </span>
+                    <span className="flex items-center gap-1">
                       <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-100 border border-red-200" />
-                      0 důkazů
+                      Začíná
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="inline-block w-2.5 h-2.5 rounded-sm bg-yellow-100 border border-yellow-200" />
-                      1–2
+                      Rozvíjí se
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="inline-block w-2.5 h-2.5 rounded-sm bg-green-100 border border-green-200" />
-                      3+
+                      Ovládá
                     </span>
                   </div>
                 </div>
@@ -418,7 +471,10 @@ export default function A01Dashboard() {
                   {courseHeatmaps
                     .filter((ch) => ch.students.length > 0)
                     .map((ch) => (
-                      <div key={ch.courseId} className="rounded-xl bg-card border border-border p-4">
+                      <div
+                        key={ch.courseId}
+                        className="rounded-xl bg-card border border-border p-4"
+                      >
                         <div className="flex items-center justify-between mb-3">
                           <Link
                             to={`/courses/${ch.courseId}`}
@@ -431,8 +487,13 @@ export default function A01Dashboard() {
                               {ch.className} · {ch.subjectName}
                               {ch.totalGoals > 0 && (
                                 <span>
-                                  {" · "}{ch.coveredGoals} / {ch.totalGoals}{" "}
-                                  {ch.totalGoals === 1 ? "cíl" : ch.totalGoals < 5 ? "cíle" : "cílů"}
+                                  {" · "}
+                                  {ch.coveredGoals} / {ch.totalGoals}{" "}
+                                  {ch.totalGoals === 1
+                                    ? "cíl"
+                                    : ch.totalGoals < 5
+                                      ? "cíle"
+                                      : "cílů"}
                                 </span>
                               )}
                             </p>
@@ -446,25 +507,25 @@ export default function A01Dashboard() {
                           </Link>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
-                          {ch.students.map((s) => {
-                            const bg =
-                              s.proofCount === 0
-                                ? "bg-red-100 text-red-800 border-red-200"
-                                : s.proofCount <= 2
-                                  ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                                  : "bg-green-100 text-green-800 border-green-200";
-                            return (
-                              <Link
-                                key={s.id}
-                                to={`/student-profiles/${s.id}`}
-                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-opacity hover:opacity-80 ${bg}`}
-                                title={`${s.firstName} ${s.lastName}: ${s.proofCount} důkazů`}
-                              >
-                                {s.firstName} {s.lastName.charAt(0)}.
-                                {s.proofCount > 0 && <span className="opacity-60">{s.proofCount}</span>}
-                              </Link>
-                            );
-                          })}
+                          {ch.students.map((s) => (
+                            <Link
+                              key={s.id}
+                              to={`/student-profiles/${s.id}`}
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-opacity hover:opacity-80 ${getMasteryColor(s.mastery)}`}
+                              title={`${s.firstName} ${s.lastName}: ${getMasteryLabel(s.mastery)}${s.goalsWithLevel > 0 ? ` (${s.goalsWithLevel}/${ch.totalGoals} cílů)` : ""}`}
+                            >
+                              {s.firstName} {s.lastName.charAt(0)}.
+                              {s.mastery !== "none" && (
+                                <span className="opacity-60 text-[10px]">
+                                  {s.mastery === "high"
+                                    ? "O"
+                                    : s.mastery === "mid"
+                                      ? "R"
+                                      : "Z"}
+                                </span>
+                              )}
+                            </Link>
+                          ))}
                         </div>
                       </div>
                     ))}

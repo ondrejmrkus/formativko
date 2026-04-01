@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SearchBar } from "@/components/shared/SearchBar";
@@ -6,21 +6,25 @@ import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Plus, ArrowUp, ArrowDown } from "lucide-react";
 import { useStudents, getStudentDisplayName } from "@/hooks/useStudents";
-import { useClasses } from "@/hooks/useClasses";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useClasses, useAllClassStudents } from "@/hooks/useClasses";
+import { useStudentProofCounts } from "@/hooks/useProofs";
+import { Pagination } from "@/components/shared/Pagination";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { ListSkeleton } from "@/components/shared/ListSkeleton";
+
+const PAGE_SIZE = 50;
 
 export default function B01StudentProfiles() {
-  const { user } = useAuth();
+  usePageTitle("Profily žáků");
   const { data: students = [], isLoading: studentsLoading } = useStudents();
   const { data: classes = [] } = useClasses();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
   const [sortBy, setSortBy] = useState<"name" | "proofs">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(0);
 
   const toggleSort = useCallback((col: "name" | "proofs") => {
     if (sortBy === col) {
@@ -32,29 +36,8 @@ export default function B01StudentProfiles() {
   }, [sortBy]);
 
   // Get all class_students mappings and proof counts in bulk
-  const { data: classStudentMap = [] } = useQuery({
-    queryKey: ["all_class_students", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("class_students")
-        .select("student_id, class_id");
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
-
-  const { data: proofCounts = [] } = useQuery({
-    queryKey: ["all_proof_counts", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("proof_students")
-        .select("student_id");
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
+  const { data: classStudentMap = [] } = useAllClassStudents();
+  const { data: proofCounts = [] } = useStudentProofCounts();
 
   const toggleFilter = (group: string, option: string) => {
     setFilters((prev) => {
@@ -111,6 +94,14 @@ export default function B01StudentProfiles() {
     return result;
   }, [students, search, filters, classes, classStudentMap, sortBy, sortDir, proofCountMap]);
 
+  // Reset page when filters change
+  useEffect(() => { setPage(0); }, [search, filters, sortBy, sortDir]);
+
+  const paginatedStudents = useMemo(
+    () => filteredStudents.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [filteredStudents, page]
+  );
+
   const getStudentClassNames = (studentId: string) => {
     const cids = classStudentMap
       .filter((cs) => cs.student_id === studentId)
@@ -153,20 +144,20 @@ export default function B01StudentProfiles() {
           addHref={{ "Třída": "/create-class" }}
         />
 
-        <div className="grid grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide border-b border-border">
-          <button onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-foreground transition-colors text-left">
+        <div className="flex items-center gap-2 mb-4 text-xs text-muted-foreground">
+          <span className="mr-1">Řazení:</span>
+          <button onClick={() => toggleSort("name")} className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors ${sortBy === "name" ? "bg-accent text-foreground font-medium" : "hover:text-foreground"}`}>
             Jméno
-            {sortBy === "name" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+            {sortBy === "name" && (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
           </button>
-          <span className="hidden sm:inline w-20 text-center">Třída</span>
-          <button onClick={() => toggleSort("proofs")} className="w-16 sm:w-20 flex items-center justify-center gap-1 hover:text-foreground transition-colors">
+          <button onClick={() => toggleSort("proofs")} className={`flex items-center gap-1 px-2 py-1 rounded-md transition-colors ${sortBy === "proofs" ? "bg-accent text-foreground font-medium" : "hover:text-foreground"}`}>
             Důkazy
-            {sortBy === "proofs" ? (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3 opacity-40" />}
+            {sortBy === "proofs" && (sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />)}
           </button>
         </div>
 
         {studentsLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Načítání…</div>
+          <ListSkeleton count={8} />
         ) : filteredStudents.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             {students.length === 0 ? (
@@ -182,37 +173,42 @@ export default function B01StudentProfiles() {
             )}
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {filteredStudents.map((student) => {
+          <div className="space-y-2">
+            {paginatedStudents.map((student) => {
               const studentClasses = getStudentClassNames(student.id);
               const proofCount = getProofCount(student.id);
               return (
                 <Link
                   key={student.id}
                   to={`/student-profiles/${student.id}`}
-                  className="grid grid-cols-[1fr_auto_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
+                  className="block p-4 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-sm transition-all"
                 >
-                  <span className="font-medium text-foreground truncate flex items-center gap-2">
-                    {getStudentDisplayName(student)}
-                    {student.svp && (
-                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0 shrink-0">SVP</Badge>
-                    )}
-                  </span>
-                  <div className="hidden sm:flex gap-1">
-                    {studentClasses.map((c) => (
-                      <Badge key={c.id} variant="secondary" className="text-xs">
-                        {c.name}
-                      </Badge>
-                    ))}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-medium text-foreground truncate">
+                        {getStudentDisplayName(student)}
+                      </span>
+                      {student.svp && (
+                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 shrink-0">SVP</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {studentClasses.map((c) => (
+                        <Badge key={c.id} variant="secondary" className="text-xs hidden sm:inline-flex">
+                          {c.name}
+                        </Badge>
+                      ))}
+                      <span className="text-xs text-muted-foreground">
+                        {proofCount} {proofCount === 1 ? "důkaz" : proofCount < 5 ? "důkazy" : "důkazů"}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-sm text-muted-foreground w-16 sm:w-20 text-center">
-                    {proofCount}
-                  </span>
                 </Link>
               );
             })}
           </div>
         )}
+        <Pagination page={page} pageSize={PAGE_SIZE} total={filteredStudents.length} onPageChange={setPage} />
       </div>
     </AppLayout>
   );

@@ -229,3 +229,70 @@ export function useLessonStudentOverview(classId: string | undefined, goalIds: s
     enabled: !!user && !!classId && goalIds.length > 0,
   });
 }
+
+/**
+ * Fetches proofs linked to a specific lesson.
+ */
+export function useLessonProofs(lessonId: string | undefined) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["lessons", "proofs", lessonId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("proofs_of_learning")
+        .select("id, title, type, date, note")
+        .eq("lesson_id", lessonId!)
+        .order("date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && !!lessonId,
+  });
+}
+
+/**
+ * Fetches proof_goals counts per goal for a set of goal IDs.
+ */
+export function useLessonGoalProofCounts(goalIds: string[]) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["lesson_goal_proof_counts", goalIds],
+    queryFn: async () => {
+      if (goalIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from("proof_goals")
+        .select("goal_id")
+        .in("goal_id", goalIds);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      for (const r of data) {
+        map[r.goal_id] = (map[r.goal_id] || 0) + 1;
+      }
+      return map;
+    },
+    enabled: !!user && goalIds.length > 0,
+  });
+}
+
+/**
+ * Fetches lesson counts per course.
+ */
+export function useCourseLessonCounts() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["courses", "lesson_counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lessons")
+        .select("course_id")
+        .not("course_id", "is", null);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      for (const r of data) {
+        if (r.course_id) map[r.course_id] = (map[r.course_id] || 0) + 1;
+      }
+      return map;
+    },
+    enabled: !!user,
+  });
+}

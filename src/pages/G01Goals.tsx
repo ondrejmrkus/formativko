@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SearchBar } from "@/components/shared/SearchBar";
@@ -17,16 +17,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useGoals, useDeleteGoal } from "@/hooks/useGoals";
+import { useGoals, useDeleteGoal, useAllGoalCriteriaCounts, useAllGoalProofCounts } from "@/hooks/useGoals";
 import { useClasses } from "@/hooks/useClasses";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { Pagination } from "@/components/shared/Pagination";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { ListSkeleton } from "@/components/shared/ListSkeleton";
+
+const PAGE_SIZE = 50;
 
 export default function G01Goals() {
-  const { user } = useAuth();
+  usePageTitle("Vzdělávací cíle");
   const { data: goals = [], isLoading } = useGoals();
   const { data: classes = [] } = useClasses();
   const { data: allSubjects = [] } = useSubjects();
@@ -34,40 +36,11 @@ export default function G01Goals() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const [page, setPage] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
-  // Fetch criteria counts and proof counts per goal
-  const { data: criteriaCountMap = {} } = useQuery({
-    queryKey: ["goals", "criteria_counts"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("evaluation_criteria")
-        .select("goal_id");
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      for (const r of data) {
-        map[r.goal_id] = (map[r.goal_id] || 0) + 1;
-      }
-      return map;
-    },
-    enabled: !!user,
-  });
-
-  const { data: proofCountMap = {} } = useQuery({
-    queryKey: ["goals", "proof_counts"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("proof_goals")
-        .select("goal_id");
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      for (const r of data) {
-        map[r.goal_id] = (map[r.goal_id] || 0) + 1;
-      }
-      return map;
-    },
-    enabled: !!user,
-  });
+  const { data: criteriaCountMap = {} } = useAllGoalCriteriaCounts();
+  const { data: proofCountMap = {} } = useAllGoalProofCounts();
 
   const toggleFilter = (group: string, option: string) => {
     setFilters((prev) => {
@@ -106,6 +79,13 @@ export default function G01Goals() {
     return result;
   }, [goals, search, filters, classes]);
 
+  useEffect(() => { setPage(0); }, [search, filters]);
+
+  const paginatedGoals = useMemo(
+    () => filteredGoals.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [filteredGoals, page]
+  );
+
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto">
@@ -141,7 +121,7 @@ export default function G01Goals() {
         />
 
         {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Načítání…</div>
+          <ListSkeleton count={6} />
         ) : filteredGoals.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             {goals.length === 0 ? (
@@ -158,7 +138,7 @@ export default function G01Goals() {
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredGoals.map((goal) => {
+            {paginatedGoals.map((goal) => {
               const cls = classes.find((c) => c.id === goal.class_id);
               const criteriaCount = criteriaCountMap[goal.id] || 0;
               const proofCount = proofCountMap[goal.id] || 0;
@@ -202,6 +182,8 @@ export default function G01Goals() {
             })}
           </div>
         )}
+
+        <Pagination page={page} pageSize={PAGE_SIZE} total={filteredGoals.length} onPageChange={setPage} />
 
         <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
           <AlertDialogContent>

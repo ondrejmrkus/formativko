@@ -6,11 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Copy, FileSearch } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useEvaluationsByGroup, useEvaluationGroups, useUpdateEvaluation } from "@/hooks/useEvaluations";
+import { useEvaluationsByGroup, useEvaluationGroups, useUpdateEvaluation, useSourceProofs } from "@/hooks/useEvaluations";
 import { useStudents, getStudentDisplayName } from "@/hooks/useStudents";
 import { useToast } from "@/hooks/use-toast";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type DraftStatus = "waiting" | "approved" | "insufficient";
 
@@ -21,6 +20,7 @@ const statusConfig: Record<DraftStatus, { label: string; className: string }> = 
 };
 
 export default function C03EditEvaluationDrafts() {
+  usePageTitle("Úprava hodnocení");
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { data: groups = [] } = useEvaluationGroups();
@@ -36,22 +36,8 @@ export default function C03EditEvaluationDrafts() {
   const activeEvalId = selectedEvalId || evaluations[0]?.id;
   const activeEval = evaluations.find((e) => e.id === activeEvalId);
 
-  // Fetch source proofs for the active evaluation
   const activeProofIds: string[] = (activeEval as any)?.source_proof_ids || [];
-  const { data: sourceProofs = [] } = useQuery({
-    queryKey: ["source_proofs", activeEvalId, activeProofIds],
-    queryFn: async () => {
-      if (activeProofIds.length === 0) return [];
-      const { data, error } = await supabase
-        .from("proofs_of_learning")
-        .select("id, title, type, date")
-        .in("id", activeProofIds)
-        .order("date");
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: activeProofIds.length > 0,
-  });
+  const { data: sourceProofs = [] } = useSourceProofs(activeProofIds);
 
   const getStudent = (studentId: string) => allStudents.find((s) => s.id === studentId);
 
@@ -80,7 +66,8 @@ export default function C03EditEvaluationDrafts() {
       const student = activeEval ? getStudent(activeEval.student_id) : null;
       const label = newStatus === "approved" ? "schváleno" : "vráceno ke kontrole";
       toast({ title: `Hodnocení pro ${student ? getStudentDisplayName(student) : "žáka"} ${label}` });
-    } catch {
+    } catch (err) {
+      console.error("Chyba při změně stavu", err);
       toast({ title: "Chyba při změně stavu", variant: "destructive" });
     }
   };
@@ -90,7 +77,8 @@ export default function C03EditEvaluationDrafts() {
     try {
       await updateEval.mutateAsync({ id: activeEvalId, text: getText(activeEvalId) });
       toast({ title: "Text uložen" });
-    } catch {
+    } catch (err) {
+      console.error("Chyba při ukládání", err);
       toast({ title: "Chyba při ukládání", variant: "destructive" });
     }
   };

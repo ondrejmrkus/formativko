@@ -21,6 +21,8 @@ import { useStudent, useUpdateStudent, useDeleteStudent, getStudentDisplayName }
 import { useStudentClasses } from "@/hooks/useClasses";
 import { useProofsForStudent, useDeleteProof } from "@/hooks/useProofs";
 import { useGoalCoverageForStudent } from "@/hooks/useGoals";
+import { useStudentGoalLevels } from "@/hooks/useStudentGoalLevels";
+import { getLevelColor, DEFAULT_LEVEL_DESCRIPTORS } from "@/constants/goalLevels";
 import { useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -41,8 +43,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function B02StudentProfileDetail() {
+  usePageTitle("Detail žáka");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -51,6 +55,8 @@ export default function B02StudentProfileDetail() {
   const { data: proofs = [] } = useProofsForStudent(id);
   const classIds = studentClasses.map((c) => c.id);
   const { data: goalCoverage = [] } = useGoalCoverageForStudent(id, classIds);
+  const goalIds = useMemo(() => goalCoverage.map((gc) => gc.goal.id), [goalCoverage]);
+  const { data: studentGoalLevels = {} } = useStudentGoalLevels(goalIds);
   const updateStudent = useUpdateStudent();
   const deleteStudent = useDeleteStudent();
   const deleteProof = useDeleteProof();
@@ -138,7 +144,8 @@ export default function B02StudentProfileDetail() {
       });
       toast({ title: "Profil žáka upraven" });
       setEditOpen(false);
-    } catch {
+    } catch (err) {
+      console.error("Chyba při úpravě", err);
       toast({ title: "Chyba při úpravě", variant: "destructive" });
     }
   };
@@ -149,7 +156,8 @@ export default function B02StudentProfileDetail() {
       await deleteStudent.mutateAsync(id);
       toast({ title: "Profil žáka smazán" });
       navigate("/student-profiles");
-    } catch {
+    } catch (err) {
+      console.error("Chyba při mazání", err);
       toast({ title: "Chyba při mazání", variant: "destructive" });
     }
   };
@@ -158,7 +166,8 @@ export default function B02StudentProfileDetail() {
     try {
       await deleteProof.mutateAsync(proofId);
       toast({ title: "Důkaz smazán" });
-    } catch {
+    } catch (err) {
+      console.error("Chyba při mazání důkazu", err);
       toast({ title: "Chyba při mazání důkazu", variant: "destructive" });
     }
   };
@@ -415,25 +424,30 @@ export default function B02StudentProfileDetail() {
               <span className="text-sm font-medium text-foreground">Pokrytí cílů</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {goalCoverage.map(({ goal, proofCount }) => (
-                <Link
-                  key={goal.id}
-                  to={`/goals/${goal.id}`}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-xs hover:bg-accent transition-colors"
-                >
-                  {proofCount > 0 ? (
-                    <Check className="h-3 w-3 text-green-600" />
-                  ) : (
-                    <Minus className="h-3 w-3 text-muted-foreground" />
-                  )}
-                  <span className={proofCount > 0 ? "text-foreground" : "text-muted-foreground"}>
-                    {goal.title}
-                  </span>
-                  {proofCount > 0 && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 ml-0.5">{proofCount}</Badge>
-                  )}
-                </Link>
-              ))}
+              {goalCoverage.map(({ goal, levelNames }) => {
+                const level = id ? studentGoalLevels[id]?.[goal.id] : undefined;
+                const names = levelNames.length > 0 ? levelNames : DEFAULT_LEVEL_DESCRIPTORS.map((d) => d.level);
+                const colorClass = level
+                  ? getLevelColor(level, names)
+                  : "border-border bg-card text-muted-foreground";
+                return (
+                  <Link
+                    key={goal.id}
+                    to={`/goals/${goal.id}`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs hover:opacity-80 transition-all ${colorClass}`}
+                  >
+                    {level ? (
+                      <span className="font-semibold">{level.charAt(0).toUpperCase()}</span>
+                    ) : (
+                      <Minus className="h-3 w-3" />
+                    )}
+                    <span>{goal.title}</span>
+                    {level && (
+                      <span className="opacity-60 text-[10px]">{level}</span>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}

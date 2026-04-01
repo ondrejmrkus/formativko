@@ -2,45 +2,36 @@ import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SearchBar } from "@/components/shared/SearchBar";
-import { useClasses, useClassStudentCount } from "@/hooks/useClasses";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { useClasses, useAllClassStudents } from "@/hooks/useClasses";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Plus, Users } from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { ListSkeleton } from "@/components/shared/ListSkeleton";
 
 function ClassCard({ cls, studentCount }: { cls: { id: string; name: string }; studentCount: number }) {
   return (
     <Link
       to={`/edit-class/${cls.id}`}
-      className="flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg"
+      className="block p-4 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-sm transition-all"
     >
-      <span className="font-medium text-foreground">{cls.name}</span>
-      <span className="flex items-center gap-1 text-sm text-muted-foreground">
-        <Users className="h-4 w-4" />
-        {studentCount}
-      </span>
+      <div className="flex items-center justify-between">
+        <span className="font-medium text-foreground">{cls.name}</span>
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Users className="h-4 w-4" />
+          {studentCount} {studentCount === 1 ? "žák" : studentCount < 5 ? "žáci" : "žáků"}
+        </span>
+      </div>
     </Link>
   );
 }
 
 export default function F01Classes() {
-  const { user } = useAuth();
+  usePageTitle("Třídy");
   const { data: classes = [], isLoading } = useClasses();
   const [search, setSearch] = useState("");
 
-  const { data: allClassStudents = [] } = useQuery({
-    queryKey: ["all_class_students", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("class_students")
-        .select("class_id");
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
+  const { data: allClassStudents = [] } = useAllClassStudents();
 
   const countMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -84,7 +75,7 @@ export default function F01Classes() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Načítání…</div>
+          <ListSkeleton variant="row" count={6} />
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             {classes.length === 0 ? (
@@ -100,7 +91,7 @@ export default function F01Classes() {
             )}
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="space-y-2">
             {filtered.map((cls) => (
               <ClassCard key={cls.id} cls={cls} studentCount={countMap[cls.id] || 0} />
             ))}

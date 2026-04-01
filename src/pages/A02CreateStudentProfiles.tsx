@@ -7,38 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Plus, Upload, X, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCreateStudents } from "@/hooks/useStudents";
-import { supabase } from "@/integrations/supabase/client";
-
-function parseNamesFromText(text: string): { first: string; last: string }[] {
-  const results: { first: string; last: string }[] = [];
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  for (const line of lines) {
-    const parts = line.split(/[,;\t]+/).map((p) => p.trim()).filter(Boolean);
-    if (parts.length >= 2) {
-      results.push({ first: parts[0], last: parts[1] });
-    } else {
-      const words = line.split(/\s+/).filter(Boolean);
-      if (words.length >= 2) {
-        const first = words.slice(0, -1).join(" ");
-        const last = words[words.length - 1];
-        results.push({ first, last });
-      } else if (words.length === 1) {
-        results.push({ first: words[0], last: "" });
-      }
-    }
-  }
-  return results;
-}
-
-const TEXT_EXTENSIONS = [".csv", ".txt", ".tsv", ".text"];
-
-function isTextFile(file: File): boolean {
-  if (file.type.startsWith("text/")) return true;
-  const name = file.name.toLowerCase();
-  return TEXT_EXTENSIONS.some((ext) => name.endsWith(ext));
-}
+import { parseNamesFromText, isTextFile, processFileWithAI } from "@/utils/nameParser";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function A02CreateStudentProfiles() {
+  usePageTitle("Vytvořit žákovské profily");
   const navigate = useNavigate();
   const { toast } = useToast();
   const createStudents = useCreateStudents();
@@ -74,31 +47,6 @@ export default function A02CreateStudentProfiles() {
     toast({ title: `Načteno ${parsed.length} ${parsed.length === 1 ? "jméno" : "jmen"} ze souboru` });
   };
 
-  const processFileWithAI = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error("Not authenticated");
-
-    const res = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-names`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        body: formData,
-      }
-    );
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Chyba při zpracování souboru");
-    }
-
-    const { names } = await res.json();
-    return (names || []) as { first: string; last: string }[];
-  };
-
   const processFile = async (file: File) => {
     try {
       if (isTextFile(file)) {
@@ -110,7 +58,8 @@ export default function A02CreateStudentProfiles() {
         const parsed = await processFileWithAI(file);
         addParsedNames(parsed);
       }
-    } catch {
+    } catch (err) {
+      console.error("Nepodařilo se zpracovat soubor", err);
       toast({ title: "Nepodařilo se zpracovat soubor", variant: "destructive" });
     } finally {
       setIsProcessing(false);
@@ -142,7 +91,8 @@ export default function A02CreateStudentProfiles() {
       );
       toast({ title: `${filled.length} ${filled.length === 1 ? "profil vytvořen" : "profilů vytvořeno"}` });
       navigate("/student-profiles");
-    } catch {
+    } catch (err) {
+      console.error("Chyba při vytváření profilů", err);
       toast({ title: "Chyba při vytváření profilů", variant: "destructive" });
     }
   };

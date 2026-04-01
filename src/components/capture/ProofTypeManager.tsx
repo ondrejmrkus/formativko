@@ -69,7 +69,8 @@ export default function ProofTypeManager({ proofTypes, onClose }: ProofTypeManag
         fields: editFields,
       });
       setEditingId(null);
-    } catch {
+    } catch (err) {
+      console.error("Chyba při ukládání", err);
       toast({ title: "Chyba při ukládání", variant: "destructive" });
     }
   };
@@ -96,7 +97,8 @@ export default function ProofTypeManager({ proofTypes, onClose }: ProofTypeManag
     try {
       await deleteType.mutateAsync(id);
       if (editingId === id) setEditingId(null);
-    } catch {
+    } catch (err) {
+      console.error("Chyba při mazání", err);
       toast({ title: "Chyba při mazání", variant: "destructive" });
     }
   };

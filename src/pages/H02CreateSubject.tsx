@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSubject, useCreateSubject, useUpdateSubject } from "@/hooks/useSubjects";
 import { useToast } from "@/hooks/use-toast";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function H02CreateSubject() {
+  usePageTitle("Předmět");
   const { subjectId } = useParams<{ subjectId: string }>();
   const isEdit = !!subjectId;
   const navigate = useNavigate();
@@ -39,7 +41,8 @@ export default function H02CreateSubject() {
         toast({ title: "Předmět vytvořen" });
       }
       navigate("/subjects");
-    } catch {
+    } catch (err) {
+      console.error("Chyba při ukládání", err);
       toast({ title: "Chyba při ukládání", variant: "destructive" });
     }
   };

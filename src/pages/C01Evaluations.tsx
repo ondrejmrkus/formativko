@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SearchBar } from "@/components/shared/SearchBar";
 import { ClassFilterBar } from "@/components/shared/ClassFilterBar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Plus, Trash2, Check, Clock, AlertTriangle } from "lucide-react";
@@ -16,15 +17,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useEvaluationGroups, useDeleteEvaluationGroup } from "@/hooks/useEvaluations";
+import { useEvaluationGroups, useDeleteEvaluationGroup, useAllEvaluationStats } from "@/hooks/useEvaluations";
 import { useClasses } from "@/hooks/useClasses";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { ListSkeleton } from "@/components/shared/ListSkeleton";
 
 export default function C01Evaluations() {
-  const { user } = useAuth();
+  usePageTitle("Hodnocení");
   const { data: evaluationGroups = [], isLoading } = useEvaluationGroups();
   const { data: classes = [] } = useClasses();
   const deleteGroup = useDeleteEvaluationGroup();
@@ -33,18 +33,7 @@ export default function C01Evaluations() {
   const [filters, setFilters] = useState<Record<string, string[]>>({});
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-  // Fetch all evaluations to compute per-group stats
-  const { data: allEvaluations = [] } = useQuery({
-    queryKey: ["evaluations", "all"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("evaluations")
-        .select("id, group_id, status");
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
+  const { data: allEvaluations = [] } = useAllEvaluationStats();
 
   const groupStats = useMemo(() => {
     const map: Record<string, { total: number; approved: number; waiting: number; insufficient: number }> = {};
@@ -131,7 +120,7 @@ export default function C01Evaluations() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Načítání…</div>
+          <ListSkeleton count={6} />
         ) : filteredGroups.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             {evaluationGroups.length === 0 ? (
@@ -147,51 +136,49 @@ export default function C01Evaluations() {
             )}
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="space-y-2">
             {filteredGroups.map((group) => {
               const cls = classes.find((c) => c.id === group.class_id);
               const stats = groupStats[group.id] || { total: 0, approved: 0, waiting: 0, insufficient: 0 };
               return (
-                <div
-                  key={group.id}
-                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-2 sm:gap-4 px-4 py-3 hover:bg-accent/50 transition-colors rounded-lg items-center"
-                >
-                  <Link to={`/evaluations/edit/${group.id}`} className="font-medium text-foreground hover:underline">
-                    {group.name}
+                <div key={group.id} className="flex items-center gap-2">
+                  <Link
+                    to={`/evaluations/edit/${group.id}`}
+                    className="flex-1 p-4 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-sm transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <span className="font-medium text-foreground">{group.name}</span>
+                        <div className="flex items-center gap-3 mt-2 flex-wrap text-xs">
+                          {cls && <Badge variant="outline" className="text-xs">{cls.name}</Badge>}
+                          {stats.approved > 0 && (
+                            <span className="flex items-center gap-1 text-green-600">
+                              <Check className="h-3.5 w-3.5" />
+                              {stats.approved}
+                            </span>
+                          )}
+                          {stats.waiting > 0 && (
+                            <span className="flex items-center gap-1 text-yellow-600">
+                              <Clock className="h-3.5 w-3.5" />
+                              {stats.waiting}
+                            </span>
+                          )}
+                          {stats.insufficient > 0 && (
+                            <span className="flex items-center gap-1 text-destructive">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              {stats.insufficient}
+                            </span>
+                          )}
+                          <span className="text-muted-foreground">
+                            ({stats.total} celkem)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </Link>
-                  <div className="w-48 flex items-center justify-center gap-3 text-xs">
-                    {stats.approved > 0 && (
-                      <span className="flex items-center gap-1 text-green-600">
-                        <Check className="h-3.5 w-3.5" />
-                        {stats.approved}
-                      </span>
-                    )}
-                    {stats.waiting > 0 && (
-                      <span className="flex items-center gap-1 text-yellow-600">
-                        <Clock className="h-3.5 w-3.5" />
-                        {stats.waiting}
-                      </span>
-                    )}
-                    {stats.insufficient > 0 && (
-                      <span className="flex items-center gap-1 text-destructive">
-                        <AlertTriangle className="h-3.5 w-3.5" />
-                        {stats.insufficient}
-                      </span>
-                    )}
-                    <span className="text-muted-foreground">
-                      ({stats.total} žáků)
-                    </span>
-                  </div>
-                  <span className="w-24 text-center text-sm text-muted-foreground">
-                    {cls?.name || "—"}
-                  </span>
                   <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDeleteTarget({ id: group.id, name: group.name });
-                    }}
-                    className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    onClick={() => setDeleteTarget({ id: group.id, name: group.name })}
+                    className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
                     title="Smazat hodnocení"
                   >
                     <Trash2 className="h-4 w-4" />

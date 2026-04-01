@@ -17,8 +17,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function B03aProofOfLearningDetailText() {
+  usePageTitle("Detail důkazu");
   const { id, proofId } = useParams<{ id: string; proofId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -54,7 +56,8 @@ export default function B03aProofOfLearningDetailText() {
     try {
       await updateProof.mutateAsync({ id: proofId, title, note, date: proof.date, lessonId: proof.lesson_id });
       toast({ title: "Důkaz uložen" });
-    } catch {
+    } catch (err) {
+      console.error("Chyba při ukládání", err);
       toast({ title: "Chyba při ukládání", variant: "destructive" });
     }
   };
@@ -65,7 +68,8 @@ export default function B03aProofOfLearningDetailText() {
       await deleteProof.mutateAsync(proofId);
       toast({ title: "Důkaz smazán" });
       navigate(`/student-profiles/${id}`);
-    } catch {
+    } catch (err) {
+      console.error("Chyba při mazání", err);
       toast({ title: "Chyba při mazání", variant: "destructive" });
     }
   };

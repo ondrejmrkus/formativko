@@ -142,3 +142,41 @@ export function useDeleteProof() {
     },
   });
 }
+
+/**
+ * Fetches proof counts per student (used by B01StudentProfiles).
+ */
+/**
+ * Fetches proofs with file attachments (camera/file types).
+ */
+export function useProofsWithFiles() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["proofs-with-files", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("proofs_of_learning")
+        .select("id, title, type, date, file_url, file_name")
+        .in("type", ["camera", "file"])
+        .order("date", { ascending: false });
+      if (error) throw error;
+      return data as { id: string; title: string; type: string; date: string; file_url: string | null; file_name: string | null }[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useStudentProofCounts() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["all_proof_counts", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("proof_students")
+        .select("student_id");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+}

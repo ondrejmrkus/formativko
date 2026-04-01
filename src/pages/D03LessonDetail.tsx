@@ -16,31 +16,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useLesson, useLessonGoals, useDeleteLesson, useLessonStudentOverview } from "@/hooks/useLessons";
+import { useLesson, useLessonGoals, useDeleteLesson, useLessonStudentOverview, useLessonProofs, useLessonGoalProofCounts } from "@/hooks/useLessons";
 import { useClasses } from "@/hooks/useClasses";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { getStudentDisplayName } from "@/hooks/useStudents";
-
-const statusLabels: Record<string, string> = {
-  prepared: "Připravená",
-  ongoing: "Probíhající",
-  past: "Proběhlá",
-};
-
-const statusColors: Record<string, string> = {
-  prepared: "bg-blue-100 text-blue-700",
-  ongoing: "bg-green-100 text-green-700",
-  past: "bg-muted text-muted-foreground",
-};
+import { LESSON_STATUS_LABELS as statusLabels, LESSON_STATUS_COLORS as statusColors } from "@/constants/lessonStatus";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function D03LessonDetail() {
+  usePageTitle("Detail lekce");
   const { lessonId } = useParams<{ lessonId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
   const { data: lesson, isLoading } = useLesson(lessonId);
   const { data: classes = [] } = useClasses();
   const { data: lessonGoals = [] } = useLessonGoals(lessonId);
@@ -51,39 +38,8 @@ export default function D03LessonDetail() {
 
   const { data: studentOverview = [] } = useLessonStudentOverview(lesson?.class_id || undefined, goalIds);
 
-  // Fetch proofs linked to this lesson
-  const { data: linkedProofs = [] } = useQuery({
-    queryKey: ["lessons", "proofs", lessonId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("proofs_of_learning")
-        .select("id, title, type, date, note")
-        .eq("lesson_id", lessonId!)
-        .order("date", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user && !!lessonId,
-  });
-
-  // Fetch proof_goals counts per goal
-  const { data: goalProofCounts = {} } = useQuery({
-    queryKey: ["lesson_goal_proof_counts", goalIds],
-    queryFn: async () => {
-      if (goalIds.length === 0) return {};
-      const { data, error } = await supabase
-        .from("proof_goals")
-        .select("goal_id")
-        .in("goal_id", goalIds);
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      for (const r of data) {
-        map[r.goal_id] = (map[r.goal_id] || 0) + 1;
-      }
-      return map;
-    },
-    enabled: !!user && goalIds.length > 0,
-  });
+  const { data: linkedProofs = [] } = useLessonProofs(lessonId);
+  const { data: goalProofCounts = {} } = useLessonGoalProofCounts(goalIds);
 
   const handleDelete = async () => {
     if (!lessonId) return;
@@ -91,7 +47,8 @@ export default function D03LessonDetail() {
       await deleteLesson.mutateAsync(lessonId);
       toast({ title: "Lekce smazána" });
       navigate("/lessons");
-    } catch {
+    } catch (err) {
+      console.error("Chyba při mazání", err);
       toast({ title: "Chyba při mazání", variant: "destructive" });
     }
   };
@@ -277,7 +234,7 @@ export default function D03LessonDetail() {
             Důkazy z lekce ({linkedProofs.length})
           </h2>
           {linkedProofs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground bg-muted/50 rounded-xl border border-dashed border-border">
+            <div className="text-center py-6 text-muted-foreground bg-muted/50 rounded-xl border border-dashed border-border">
               Zatím žádné důkazy propojené s touto lekcí.
             </div>
           ) : (

@@ -21,6 +21,8 @@ import { useCourse } from "@/hooks/useCourses";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { LevelDescriptor } from "@/constants/goalLevels";
+import type { SuggestedGoal } from "@/types/ai";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const statusOptions = [
   { id: "prepared", label: "Připravená" },
@@ -28,13 +30,8 @@ const statusOptions = [
   { id: "past", label: "Proběhlá" },
 ];
 
-interface SuggestedGoal {
-  title: string;
-  description: string;
-  criteria: { description: string; level_descriptors: LevelDescriptor[] }[];
-}
-
 export default function D02CreateLesson() {
+  usePageTitle("Lekce");
   const { lessonId } = useParams<{ lessonId: string }>();
   const [searchParams] = useSearchParams();
   const courseIdParam = searchParams.get("courseId");
@@ -153,7 +150,8 @@ export default function D02CreateLesson() {
         toast({ title: "Lekce vytvořena" });
         navigate("/");
       }
-    } catch {
+    } catch (err) {
+      console.error("Chyba při ukládání", err);
       toast({ title: "Chyba při ukládání", variant: "destructive" });
     }
   };
@@ -204,7 +202,8 @@ export default function D02CreateLesson() {
       setSelectedGoalIds((prev) => [...prev, goal.id]);
       setAddedSuggestions((prev) => new Set(prev).add(idx));
       toast({ title: `Cíl "${sg.title}" přidán` });
-    } catch {
+    } catch (err) {
+      console.error("Chyba při ukládání cíle", err);
       toast({ title: "Chyba při ukládání cíle", variant: "destructive" });
     }
   };

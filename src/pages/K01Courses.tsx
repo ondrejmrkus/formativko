@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { SearchBar } from "@/components/shared/SearchBar";
@@ -21,12 +21,16 @@ import { useCourses, useDeleteCourse } from "@/hooks/useCourses";
 import { useClasses } from "@/hooks/useClasses";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useCourseLessonCounts } from "@/hooks/useLessons";
+import { useCourseGoalCounts } from "@/hooks/useCourseDetail";
+import { Pagination } from "@/components/shared/Pagination";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { ListSkeleton } from "@/components/shared/ListSkeleton";
+
+const PAGE_SIZE = 50;
 
 export default function K01Courses() {
-  const { user } = useAuth();
+  usePageTitle("Kurzy");
   const { data: courses = [], isLoading } = useCourses();
   const { data: classes = [] } = useClasses();
   const { data: allSubjects = [] } = useSubjects();
@@ -34,42 +38,11 @@ export default function K01Courses() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const [page, setPage] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
-  // Count lessons and goals per course
-  const { data: lessonCounts = {} } = useQuery({
-    queryKey: ["courses", "lesson_counts"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("lessons")
-        .select("course_id")
-        .not("course_id", "is", null);
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      for (const r of data) {
-        if (r.course_id) map[r.course_id] = (map[r.course_id] || 0) + 1;
-      }
-      return map;
-    },
-    enabled: !!user,
-  });
-
-  const { data: goalCounts = {} } = useQuery({
-    queryKey: ["courses", "goal_counts"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("educational_goals")
-        .select("course_id")
-        .not("course_id", "is", null);
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      for (const r of data) {
-        if (r.course_id) map[r.course_id] = (map[r.course_id] || 0) + 1;
-      }
-      return map;
-    },
-    enabled: !!user,
-  });
+  const { data: lessonCounts = {} } = useCourseLessonCounts();
+  const { data: goalCounts = {} } = useCourseGoalCounts();
 
   const toggleFilter = (group: string, option: string) => {
     setFilters((prev) => {
@@ -111,6 +84,13 @@ export default function K01Courses() {
     return result;
   }, [courses, search, filters, classes]);
 
+  useEffect(() => { setPage(0); }, [search, filters]);
+
+  const paginatedCourses = useMemo(
+    () => filteredCourses.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+    [filteredCourses, page]
+  );
+
   return (
     <AppLayout>
       <div className="max-w-4xl mx-auto">
@@ -146,7 +126,7 @@ export default function K01Courses() {
         />
 
         {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Načítání…</div>
+          <ListSkeleton count={6} />
         ) : filteredCourses.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             {courses.length === 0 ? (
@@ -164,7 +144,7 @@ export default function K01Courses() {
           </div>
         ) : (
           <div className="space-y-2">
-            {filteredCourses.map((course) => {
+            {paginatedCourses.map((course) => {
               const lCount = lessonCounts[course.id] || 0;
               const gCount = goalCounts[course.id] || 0;
               return (
@@ -205,6 +185,8 @@ export default function K01Courses() {
             })}
           </div>
         )}
+
+        <Pagination page={page} pageSize={PAGE_SIZE} total={filteredCourses.length} onPageChange={setPage} />
 
         <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
           <AlertDialogContent>
