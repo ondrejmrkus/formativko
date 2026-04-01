@@ -2,6 +2,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AppBreadcrumb } from "@/components/layout/AppBreadcrumb";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ShimmerField } from "@/components/ui/field-shimmer";
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useClassStudents } from "@/hooks/useClasses";
@@ -10,21 +11,31 @@ import { getStudentDisplayName } from "@/hooks/useStudents";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ArrowLeft, ArrowRight, AlertTriangle, FileSearch } from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function C02bCreateEvaluationDraft() {
+  usePageTitle("Náhled konceptu");
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const createEval = useCreateEvaluation();
   const updateEval = useUpdateEvaluation();
 
-  const state = location.state as any;
+  // Read from location.state first, fall back to sessionStorage on page refresh
+  const state = (location.state as any) || (() => {
+    try {
+      const stored = sessionStorage.getItem("evalPreviewState");
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  })();
 
   const {
     groupId, evaluationId, studentName, text: initialText, noProofs,
     sourceProofs: initialSourceProofs,
     subject, period,
-    selectedType, selectedClassId, selectedStudentId, selectedGoalId,
+    selectedType, selectedCourseId, selectedClassId, selectedStudentId, selectedGoalId,
     dateFrom, dateTo, preferences, className, totalStudents,
     tone, person, evalLength, customSystemPrompt,
   } = state || {};
@@ -54,10 +65,11 @@ export default function C02bCreateEvaluationDraft() {
   }
 
   const handleBack = () => {
+    sessionStorage.removeItem("evalPreviewState");
     navigate("/evaluations/create", {
       state: {
         selectedType,
-        selectedClassId,
+        selectedCourseId,
         selectedStudentId,
         dateFrom,
         dateTo,
@@ -135,6 +147,7 @@ export default function C02bCreateEvaluationDraft() {
       }
 
       toast({ title: "Hodnocení vygenerována!", description: `${totalStudents} konceptů celkem.` });
+      sessionStorage.removeItem("evalPreviewState");
       navigate(`/evaluations/edit/${groupId}`);
     } catch (e: any) {
       console.error(e);
@@ -174,12 +187,14 @@ export default function C02bCreateEvaluationDraft() {
               </div>
             )}
 
-            <Textarea
-              className="min-h-[280px] lg:min-h-[400px] bg-background"
-              value={draftText}
-              onChange={(e) => setDraftText(e.target.value)}
-              placeholder={noProofs ? "Žádné hodnocení — nedostatek důkazů o učení." : ""}
-            />
+            <ShimmerField shimmer={generating} lines={6}>
+              <Textarea
+                className="min-h-[280px] lg:min-h-[400px] bg-background"
+                value={draftText}
+                onChange={(e) => setDraftText(e.target.value)}
+                placeholder={noProofs ? "Žádné hodnocení — nedostatek důkazů o učení." : ""}
+              />
+            </ShimmerField>
 
             {sourceProofs.length > 0 && (
               <div className="mt-3 pt-3 border-t border-border">

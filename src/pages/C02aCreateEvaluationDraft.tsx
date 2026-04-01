@@ -5,14 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useClasses, useClassStudents } from "@/hooks/useClasses";
+import { useClassStudents } from "@/hooks/useClasses";
+import { useCourses, useCourseGoals } from "@/hooks/useCourses";
 import { useCreateEvaluationGroup, useCreateEvaluation } from "@/hooks/useEvaluations";
 import { getStudentDisplayName } from "@/hooks/useStudents";
-import { useGoalsForClass } from "@/hooks/useGoals";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Loader2, Sparkles, ChevronDown, RotateCcw, Code2 } from "lucide-react";
+import { Loader2, Sparkles, ChevronDown, RotateCcw, Code2, AlertTriangle } from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const evalTypes = [
   { id: "prubezna", label: "Průběžná zpětná vazba" },
@@ -62,10 +63,11 @@ const DEFAULT_SYSTEM_PROMPT = `Jsi profesionální pedagogický asistent a exper
 6. **Vazba na kritéria:** Zpětná vazba musí být opřena o dodaná kritéria a důkazy o učení. Vyhni se obecným a prázdným frázím (např. „skvělé", „mohlo by to být lepší"). Každé tvrzení musí být podloženo konkrétním důkazem.`;
 
 export default function C02aCreateEvaluationDraft() {
+  usePageTitle("Tvorba hodnocení");
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { data: classes = [] } = useClasses();
+  const { data: courses = [] } = useCourses();
   const createGroup = useCreateEvaluationGroup();
   const createEval = useCreateEvaluation();
 
@@ -73,13 +75,14 @@ export default function C02aCreateEvaluationDraft() {
   const restored = location.state as any;
 
   const [selectedType, setSelectedType] = useState<string | null>(restored?.selectedType || null);
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(restored?.selectedClassId || null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(restored?.selectedCourseId || null);
   const [dateFrom, setDateFrom] = useState(restored?.dateFrom || "2026-01-01");
   const [dateTo, setDateTo] = useState(restored?.dateTo || "2026-03-17");
   const [preferences, setPreferences] = useState(restored?.preferences || "");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(restored?.selectedStudentId || null);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(restored?.selectedGoalId || null);
   const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
 
   // Output options with defaults from evalType
   const defaults = typeDefaults[selectedType || "vlastni"] || typeDefaults.vlastni;
@@ -100,27 +103,30 @@ export default function C02aCreateEvaluationDraft() {
     setEvalLength(d.length);
   };
 
-  const { data: classStudents = [] } = useClassStudents(selectedClassId || undefined);
-  const { data: classGoals = [] } = useGoalsForClass(selectedClassId || undefined);
+  const selectedCourse = courses.find((c) => c.id === selectedCourseId);
+  const selectedClassId = selectedCourse?.class_id || null;
 
-  const selectedClass = classes.find((c) => c.id === selectedClassId);
+  const { data: classStudents = [] } = useClassStudents(selectedClassId || undefined);
+  const { data: courseGoals = [] } = useCourseGoals(selectedCourseId || undefined);
 
   const handleGenerate = async () => {
-    if (!selectedType || !selectedClassId || !selectedStudentId) {
-      toast({ title: "Vyberte typ, třídu a žáka.", variant: "destructive" });
+    if (!selectedType || !selectedCourseId || !selectedStudentId) {
+      toast({ title: "Vyberte typ, kurz a žáka.", variant: "destructive" });
       return;
     }
 
     setGenerating(true);
+    setGenError(null);
     try {
       const typeName = evalTypes.find((t) => t.id === selectedType)?.label || selectedType;
-      const groupName = `${typeName} – ${selectedClass?.name || ""} (${dateFrom} – ${dateTo})`;
+      const groupName = `${typeName} – ${selectedCourse?.name || ""} (${dateFrom} – ${dateTo})`;
 
       // Create evaluation group
       const group = await createGroup.mutateAsync({
         name: groupName,
         type: selectedType,
-        classId: selectedClassId,
+        classId: selectedClassId!,
+        courseId: selectedCourseId,
         dateFrom,
         dateTo,
       });
@@ -137,7 +143,7 @@ export default function C02aCreateEvaluationDraft() {
           dateTo,
           preferences: preferences.trim() || null,
           goalId: selectedGoalId || null,
-          className: selectedClass?.name || null,
+          className: selectedCourse?.classes?.name || null,
           tone,
           person,
           length: evalLength,
@@ -165,35 +171,37 @@ export default function C02aCreateEvaluationDraft() {
         sourceProofIds,
       });
 
-      // Navigate to C02b with all context
-      navigate("/evaluations/create/preview", {
-        state: {
-          groupId: group.id,
-          evaluationId: evaluation.id,
-          studentName: getStudentDisplayName(student),
-          text,
-          noProofs,
-          sourceProofs,
-          subject: typeName,
-          period,
-          // Params to pass back if teacher wants to retry
-          selectedType,
-          selectedClassId,
-          selectedStudentId: student.id,
-          selectedGoalId,
-          dateFrom,
-          dateTo,
-          preferences,
-          className: selectedClass?.name,
-          totalStudents: classStudents.length,
-          tone,
-          person,
-          evalLength,
-          customSystemPrompt: systemPromptModified ? systemPrompt : null,
-        },
-      });
+      // Persist state in sessionStorage so page refresh doesn't lose it
+      const previewState = {
+        groupId: group.id,
+        evaluationId: evaluation.id,
+        studentName: getStudentDisplayName(student),
+        text,
+        noProofs,
+        sourceProofs,
+        subject: typeName,
+        period,
+        selectedType,
+        selectedCourseId,
+        selectedClassId,
+        selectedStudentId: student.id,
+        selectedGoalId,
+        dateFrom,
+        dateTo,
+        preferences,
+        className: selectedCourse?.classes?.name,
+        courseName: selectedCourse?.name,
+        totalStudents: classStudents.length,
+        tone,
+        person,
+        evalLength,
+        customSystemPrompt: systemPromptModified ? systemPrompt : null,
+      };
+      sessionStorage.setItem("evalPreviewState", JSON.stringify(previewState));
+      navigate("/evaluations/create/preview", { state: previewState });
     } catch (e: any) {
       console.error(e);
+      setGenError(e?.message || "Neznámá chyba");
       toast({ title: "Chyba při generování", description: e?.message, variant: "destructive" });
     } finally {
       setGenerating(false);
@@ -290,30 +298,32 @@ export default function C02aCreateEvaluationDraft() {
             </div>
           )}
 
-          {/* Step 3: Class */}
+          {/* Step 3: Course */}
           {selectedType && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
-                Vyberte třídu
+                Vyberte kurz
               </label>
               <div className="flex flex-wrap gap-2">
-                {classes.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Zatím nemáte žádné třídy.</p>
+                {courses.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Zatím nemáte žádné kurzy.</p>
                 ) : (
-                  classes.map((c) => (
+                  courses.map((c) => (
                     <button
                       key={c.id}
                       onClick={() => {
-                        setSelectedClassId(c.id);
+                        setSelectedCourseId(c.id);
                         setSelectedStudentId(null);
+                        setSelectedGoalId(null);
                       }}
                       className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
-                        selectedClassId === c.id
+                        selectedCourseId === c.id
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border bg-card text-muted-foreground hover:border-primary/30"
                       }`}
                     >
                       {c.name}
+                      {c.classes?.name && <span className="text-xs ml-1 opacity-60">({c.classes.name})</span>}
                     </button>
                   ))
                 )}
@@ -322,7 +332,7 @@ export default function C02aCreateEvaluationDraft() {
           )}
 
           {/* Step 4: Student picker */}
-          {selectedClassId && classStudents.length > 0 && (
+          {selectedCourseId && classStudents.length > 0 && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
                 Vyberte žáka pro zkušební koncept
@@ -346,7 +356,7 @@ export default function C02aCreateEvaluationDraft() {
           )}
 
           {/* Step 5: Goal (optional) */}
-          {selectedStudentId && classGoals.length > 0 && (
+          {selectedStudentId && courseGoals.length > 0 && (
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-2">
                 Vzdělávací cíl (volitelné)
@@ -362,7 +372,7 @@ export default function C02aCreateEvaluationDraft() {
                 >
                   Bez cíle
                 </button>
-                {classGoals.map((g) => (
+                {courseGoals.map((g) => (
                   <button
                     key={g.id}
                     onClick={() => setSelectedGoalId(g.id)}
@@ -465,6 +475,20 @@ export default function C02aCreateEvaluationDraft() {
           )}
 
           {/* Generate button */}
+          {genError && !generating && (
+            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center gap-3">
+              <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-destructive font-medium">Generování selhalo</p>
+                <p className="text-xs text-destructive/70 truncate">{genError}</p>
+              </div>
+              <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={handleGenerate}>
+                <RotateCcw className="h-3.5 w-3.5" />
+                Zkusit znovu
+              </Button>
+            </div>
+          )}
+
           {selectedStudentId && (
             <div>
               <Button

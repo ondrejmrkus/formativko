@@ -59,13 +59,14 @@ export function useCreateEvaluationGroup() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ name, type, classId, dateFrom, dateTo }: {
-      name: string; type: string; classId: string; dateFrom: string; dateTo: string;
+    mutationFn: async ({ name, type, classId, courseId, dateFrom, dateTo }: {
+      name: string; type: string; classId: string; courseId?: string | null; dateFrom: string; dateTo: string;
     }) => {
       const { data, error } = await supabase
         .from("evaluation_groups")
         .insert({
           name, type, class_id: classId,
+          course_id: courseId || null,
           date_from: dateFrom, date_to: dateTo,
           teacher_id: user!.id,
         })
@@ -137,5 +138,43 @@ export function useDeleteEvaluationGroup() {
       queryClient.invalidateQueries({ queryKey: ["evaluation_groups"] });
       queryClient.invalidateQueries({ queryKey: ["evaluations"] });
     },
+  });
+}
+
+/**
+ * Fetches all evaluations with id, group_id, and status (for per-group stats).
+ */
+/**
+ * Fetches source proofs by IDs for an evaluation.
+ */
+export function useSourceProofs(proofIds: string[]) {
+  return useQuery({
+    queryKey: ["source_proofs", proofIds],
+    queryFn: async () => {
+      if (proofIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("proofs_of_learning")
+        .select("id, title, type, date")
+        .in("id", proofIds)
+        .order("date");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: proofIds.length > 0,
+  });
+}
+
+export function useAllEvaluationStats() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["evaluations", "all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("evaluations")
+        .select("id, group_id, status");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
   });
 }
